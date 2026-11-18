@@ -1,0 +1,10 @@
+# Fichiers système et compilés
+.DS_Store
+__pycache__/
+*.pyc
+
+# Poids de modèles : non redistribués dans ce dépôt (voir README, section « Poids des modèles »)
+*.keras
+*.pt
+*.pth
+*.p

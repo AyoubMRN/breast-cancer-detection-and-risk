@@ -1,9 +1,9 @@
-# Fichiers système et compilés
+# System and compiled files
 .DS_Store
 __pycache__/
 *.pyc
 
-# Poids de modèles : non redistribués dans ce dépôt (voir README, section « Poids des modèles »)
+# Model weights: not redistributed in this repository (see README, section "Model weights")
 *.keras
 *.pt
 *.pth

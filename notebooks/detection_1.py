@@ -1,10 +1,10 @@
-# Conversion en script des cellules de : modele détection 1.ipynb (Drive, POC/DEEP LEARNING/DÉTECTION/Détection 1)
-# Sorties et images retirées.
+# Script conversion of the cells of: modele détection 1.ipynb (Drive, POC/DEEP LEARNING/DÉTECTION/Détection 1)
+# Outputs and images removed.
 
 # %% [markdown] cellule 1
-# # Détection de cancer du sein — MammoScreen
+# # Breast cancer detection — MammoScreen
 # 
-# Analyse mammographique avec les modèles `ianpan/mammo-crop` et `ianpan/mammoscreen`.
+# Mammography analysis with the models `ianpan/mammo-crop` and `ianpan/mammoscreen`.
 
 # %% cellule 2
 !pip install dicomsdl -q
@@ -20,17 +20,17 @@ import numpy as np
 from transformers import AutoModel
 
 # %% [markdown] cellule 4
-# ## 1. Choisir GPU ou CPU
+# ## 1. Choose GPU or CPU
 
 # %% cellule 5
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Utilisation : {device}")
 
 # %% [markdown] cellule 6
-# ## 2. Charger les modèles depuis HuggingFace
+# ## 2. Load the models from HuggingFace
 
 # %% cellule 7
-print("Téléchargement des modèles... (première fois seulement)")
+print("Downloading the models... (first time only)")
 
 crop_model = AutoModel.from_pretrained("ianpan/mammo-crop", trust_remote_code=True)
 crop_model = crop_model.eval().to(device)
@@ -62,41 +62,41 @@ def load_dicom(path):
     return (data * 255).astype(np.uint8)
 
 # %% [markdown] cellule 11
-# ## 4. Prédiction principale
+# ## 4. Main prediction
 
 # %% cellule 12
 def predict(cc_path=None, mlo_path=None):
     """
-    cc_path  : chemin vers l'image vue de face (CC)
-    mlo_path : chemin vers l'image vue oblique (MLO)
+    cc_path  : path to the craniocaudal view image (CC)
+    mlo_path : path to the oblique view image (MLO)
     """
     if not cc_path or not mlo_path:
-        print(" Les deux images (CC et MLO) sont obligatoires !")
+        print(" Both images (CC and MLO) are required!")
         return
     if not cc_path.lower().endswith(".dcm"):
-        print(" CC : seuls les fichiers DICOM (.dcm) sont acceptés !")
+        print(" CC: only DICOM files (.dcm) are accepted!")
         return
     if not mlo_path.lower().endswith(".dcm"):
-        print(" MLO : seuls les fichiers DICOM (.dcm) sont acceptés !")
+        print(" MLO: only DICOM files (.dcm) are accepted!")
         return
-    print("🔍 Détection en cours...")
+    print("🔍 Detection in progress...")
     images = {}
 
-     # Charger CC + MLO avec load_dicom (pydicom)
+     # Load CC + MLO with load_dicom (pydicom)
     images["cc"]  = load_dicom(cc_path)
     images["mlo"] = load_dicom(mlo_path)
 
-    # Crop avec la version pydicom (la dernière chargée)
+    # Crop with the pydicom version (the last one loaded)
     images["cc"]  = crop_mammo(images["cc"],  crop_model, device)
     images["mlo"] = crop_mammo(images["mlo"], crop_model, device)
 
-    # Prédiction
+    # Prediction
     with torch.inference_mode():
         output = model(images, device=device)
 
     cancer_score  = output['cancer'].item()
 
-    print(f"\n=== Résultats ===")
+    print(f"\n=== Results ===")
     print(f"Score : {cancer_score:.4f}")
     print(f"({'Suspect' if cancer_score > 0.013 else 'Normal'})")
 
@@ -104,10 +104,10 @@ def predict(cc_path=None, mlo_path=None):
 # ## 5. Utilisation
 
 # %% cellule 14
-# Avec des fichiers DICOM :
+# With DICOM files:
 # predict("vue_cc.dcm", "vue_mlo.dcm")
 
-# Avec des PNG déjà convertis :
+# With already converted PNGs:
 # predict("vue_cc.png", "vue_mlo.png")
 predict(
     cc_path  = "/content/00002_20990909_L_CC_1.dcm",   # vue CC

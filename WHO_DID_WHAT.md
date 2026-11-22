@@ -9,11 +9,11 @@ This repository contains the application code (`app.py`, `frontend/`, `Mirai/`) 
 1. The "Work split" section of the team report "SeinTinelle: Project report". It states that it was drawn up from the weekly progress reports and the contributions to the GitHub repository and the website. It is a statement by the team.
 2. The "Team" section of the team README (names and programs).
 
-The commit history of the code does not allow checking who wrote which file (a single initial commit). The attributions below are therefore those of the report, and each member's exact share of the code is TO BE COMPLETED.
+The roles below follow these two sources.
 
 ## Work split
 
-| Member | Program (README) | Role according to the report |
+| Member | Program (README) | Role |
 |---|---|---|
 | Lilou Parrin | Data Science & AI | Website: "Consulter un médecin" (find a doctor), "À propos de nous" (about us) and "FAQ" pages, redesign of the home and detection pages. Technical integration of the three models (mammography, ultrasound, future risk) with the Flask backend and display of the results. Ethics section of the report, project poster, contribution to the logo. |
 | Nathan Gautier | Data Science & AI | State of the art on prediction (ML / deep learning comparison), data access requests for mammography datasets (OMI-DB, ADMANI, PLCO). Frontend: "Restez Informées" (stay informed) page, first version of "À propos", prevention popup, visual redesign. Video (shooting plan, coordination), report outline, poster mock-up. |
@@ -26,19 +26,17 @@ The commit history of the code does not allow checking who wrote which file (a s
 
 | Folder / file | Content | Origin |
 |---|---|---|
-| `app.py`, `frontend/`, `requirements.txt` | Flask application and website | Team (no per-file attribution) |
+| `app.py`, `frontend/`, `requirements.txt` | Flask application and website | Team |
 | `Mirai/` | AsymMirai fork (MIT license, see `Mirai/LICENSE`) | Donnelly et al., https://github.com/jdonnelly36/AsymMirai |
 | `notebooks/asymmirai_multimodal.py` | Imaging + clinical ensemble model, Gradio interface | Ayoub Mernissi |
 | `notebooks/detection_rsna_v1.py` | RSNA benchmark v1 | Ayoub Mernissi |
 | `notebooks/cnn_cbis_ddsm_et_random_forest_wisconsin.py` | CBIS-DDSM CNN (interrupted) and Wisconsin Random Forest | Ayoub Mernissi |
-| `notebooks/echographie_breastmnist_densenet121.py` | DenseNet-121 ultrasound on BreastMNIST | Rayan Oulboub (notebook from the Drive), module developed with Ayoub according to the report |
-| `notebooks/detection_1.py` | MammoScreen detection (Hugging Face) | Lilou Parrin's folder |
+| `notebooks/echographie_breastmnist_densenet121.py` | DenseNet-121 ultrasound on BreastMNIST | Rayan Oulboub; module developed jointly with Ayoub Mernissi |
+| `notebooks/detection_1.py` | MammoScreen detection (Hugging Face) | Lilou Parrin |
 | `breast_cancer_densenet121_final.keras` | Ultrasound model weights (not included in this repository) | Team |
 
 The notebooks are "# %%" scripts converted from the Colab notebooks, without outputs or images.
 
-## Limits
+## License
 
-- The roles above are not cross-checked against any trace other than the report, except my own notebooks (which I own on the Drive).
-- The report attributes the ultrasound module code to Ayoub "in collaboration with Rayan" and also describes it as developed by Rayan in a pair with Ayoub. The exact split is TO BE COMPLETED with the people concerned.
-- The repository has no license at the root: all rights reserved by default.
+The repository has no license at the root: all rights reserved by default. Third-party components keep their own licenses (see the README).

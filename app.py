@@ -15,7 +15,7 @@ models_ok   = False
 RISK_THRESHOLD = 0.013
 DENSITY_CLASSES = ["A", "B", "C", "D"]
 
-# --- Config du modèle échographie (BreastMNIST / DenseNet-121) ---
+# --- Ultrasound model config (BreastMNIST / DenseNet-121) ---
 echo_model      = None
 echo_model_ok   = False
 
@@ -25,7 +25,7 @@ STD_ECHO  = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 N_TTA_ECHO = 7
 BEST_THRESH_ECHO = 0.735
 
-# --- Config du modèle de prédiction multimodale (AsymMirai + clinique) ---
+# --- Multimodal prediction model config (AsymMirai + clinical) ---
 MIRAI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Mirai")
 sys.path.append(MIRAI_DIR)
 sys.path.append(os.path.join(MIRAI_DIR, "asymmetry_model"))
@@ -34,16 +34,16 @@ asym_model      = None
 asym_model_ok   = False
 
 BIRADS_DENSITY_MAP = {"A": 0.0, "B": 1.0, "C": 2.0, "D": 3.0}
-# 3 niveaux de risque :
-#   score < RISK_SEUIL_MODERE      -> "faible"
-#   RISK_SEUIL_MODERE <= score < RISK_SEUIL_ELEVE -> "modere"
-#   score >= RISK_SEUIL_ELEVE      -> "eleve"
+# 3 risk levels (values returned to the frontend stay in French: "faible" = low, "modere" = moderate, "eleve" = high):
+#   score < RISK_SEUIL_MODERE      -> "faible" (low)
+#   RISK_SEUIL_MODERE <= score < RISK_SEUIL_ELEVE -> "modere" (moderate)
+#   score >= RISK_SEUIL_ELEVE      -> "eleve" (high)
 RISK_SEUIL_MODERE = 0.10   # 10%
 RISK_SEUIL_ELEVE  = 0.35   # 35%
 W_IMAGERIE = 0.50
 W_CLINIQUE = 0.50
 
-# Stats d'entraînement officielles de Mirai (img_mean / img_std sur PNG16, échelle 0-65535)
+# Official Mirai training stats (img_mean / img_std on PNG16, 0-65535 scale)
 MIRAI_MEAN = 7047.99 / 65535.0
 MIRAI_STD  = 12005.5 / 65535.0
 
@@ -99,7 +99,7 @@ def load_models():
         state = load_file(os.path.join(crop_dir, "model.safetensors"))
         crop_model.load_state_dict(state, strict=False)
         crop_model.eval()
-        print("✅ mammo-crop chargé.")
+        print("✅ mammo-crop loaded.")
 
         print("⏳ Chargement de mammoscreen (~244 MB, patience) …")
         screen_dir = snapshot_download("ianpan/mammoscreen")
@@ -111,7 +111,7 @@ def load_models():
         for name, obj in inspect.getmembers(config_mod, inspect.isclass):
             if hasattr(obj, 'from_pretrained'):
                 MammoScreenConfig = obj
-                print(f"  → Config détectée : {name}")
+                print(f"  → Config detected: {name}")
                 break
 
         MammoEnsemble = screen_pkg.modeling.MammoEnsemble
@@ -120,35 +120,35 @@ def load_models():
         state2 = load_file(os.path.join(screen_dir, "model.safetensors"))
         main_model.load_state_dict(state2, strict=False)
         main_model.eval()
-        print("✅ mammoscreen chargé.")
+        print("✅ mammoscreen loaded.")
         models_ok = True
 
     except Exception as e:
-        print(f"⚠️  Erreur chargement modèles : {e}")
+        print(f"⚠️  Error loading models: {e}")
         traceback.print_exc()
         models_ok = False
 
 
 def load_echo_model():
-    """Charge le modèle de détection échographie (DenseNet-121 / BreastMNIST, Keras)."""
+    """Load the ultrasound detection model (DenseNet-121 / BreastMNIST, Keras)."""
     global echo_model, echo_model_ok
     try:
         import tensorflow as tf
 
-        print("⏳ Chargement du modèle échographie (DenseNet-121) …")
+        print("⏳ Loading the ultrasound model (DenseNet-121) …")
         echo_model = tf.keras.models.load_model(
             "breast_cancer_densenet121_final.keras", compile=False
         )
         echo_model_ok = True
-        print("✅ Modèle échographie chargé.")
+        print("✅ Ultrasound model loaded.")
     except Exception as e:
-        print(f"⚠️  Erreur chargement modèle échographie : {e}")
+        print(f"⚠️  Error loading the ultrasound model: {e}")
         traceback.print_exc()
         echo_model_ok = False
 
 
 def load_asym_model():
-    """Charge le modèle AsymMirai (PyTorch) pour la prédiction multimodale."""
+    """Load the AsymMirai model (PyTorch) for multimodal prediction."""
     global asym_model, asym_model_ok
     try:
         import torch
@@ -162,7 +162,7 @@ def load_asym_model():
         asym_model = torch.load(weights_path, map_location="cpu", weights_only=False)
         asym_model.eval()
         asym_model_ok = True
-        print("✅ Modèle AsymMirai chargé.")
+        print("✅ AsymMirai model loaded.")
     except Exception as e:
         print(f"⚠️  Erreur chargement AsymMirai : {e}")
         traceback.print_exc()
@@ -178,7 +178,7 @@ CORS(app)
 
 
 def read_image(file_bytes, filename=""):
-    """Lit un fichier image et retourne un np.ndarray uint8 (H, W) en niveaux de gris."""
+    """Read an image file and return a grayscale np.ndarray uint8 (H, W)."""
     fname = filename.lower()
     if fname.endswith(".dcm"):
         try:
@@ -201,14 +201,14 @@ def read_image(file_bytes, filename=""):
 
 def run_pipeline(images_np):
     """
-    images_np : liste de np.ndarray (H, W) uint8
-    Le modèle attend : liste de dicts {"cc": arr, "mlo": arr}
-    ou un seul dict {"cc": arr}
+    images_np: list of np.ndarray (H, W) uint8
+    The model expects: a list of dicts {"cc": arr, "mlo": arr}
+    or a single dict {"cc": arr}
     """
     import torch
 
-    # ── Étape 1 : mammo-crop ─────────────────────────────────────
-    # mammo-crop attend un tensor (1, 1, H, W)
+    # ── Step 1: mammo-crop ───────────────────────────────────────
+    # mammo-crop expects a tensor (1, 1, H, W)
     import torchvision.transforms.functional as TF
 
     cropped = []
@@ -230,19 +230,19 @@ def run_pipeline(images_np):
             else:
                 cropped.append(arr)
         except Exception as e:
-            print(f"  ⚠️ mammo-crop ignoré pour image {i+1} : {e}")
+            print(f"  ⚠️ mammo-crop skipped for image {i+1}: {e}")
             cropped.append(arr)
 
-    # ── Étape 2 : mammoscreen ────────────────────────────────────
-    # Le modèle attend une liste de dicts avec np.ndarray (H, W) uint8
-    # Clés conventionnelles : "cc" pour vue face, "mlo" pour vue oblique
+    # ── Step 2: mammoscreen ──────────────────────────────────────
+    # The model expects a list of dicts with np.ndarray (H, W) uint8
+    # Conventional keys: "cc" for the craniocaudal view, "mlo" for the oblique view
     VIEW_KEYS = ["cc", "mlo"]
 
     if len(cropped) == 1:
-        # 1 seule image → un dict avec la clé "cc"
+        # Single image → one dict with the "cc" key
         sample = {"cc": cropped[0]}
     else:
-        # 2 images → un dict avec "cc" et "mlo"
+        # 2 images → one dict with "cc" and "mlo"
         sample = {VIEW_KEYS[i]: img for i, img in enumerate(cropped)}
 
     print(f"  → input mammoscreen : {list(sample.keys())} — shapes : {[v.shape for v in sample.values()]}")
@@ -252,7 +252,7 @@ def run_pipeline(images_np):
 
     print(f"  → output mammoscreen : { {k: v for k, v in output.items()} }")
 
-    # Clé "cancer" → score de risque (0–1)
+    # "cancer" key → risk score (0–1)
     risk_raw    = output.get("cancer", None)
     density_raw = output.get("density", None)
 
@@ -269,7 +269,7 @@ def run_pipeline(images_np):
 
 
 # =====================================================================
-#  Prédiction multimodale (AsymMirai + données cliniques)
+#  Multimodal prediction (AsymMirai + clinical data)
 # =====================================================================
 
 def encode_clinical_features(age, imc, antecedents_familiaux, densite_birads):
@@ -311,7 +311,7 @@ def auto_orient_breast(arr_uint8):
 
 
 def preprocess_rsna(img):
-    """Reproduit le préprocessing officiel AsymMirai (résolution + normalisation natives)."""
+    """Reproduce the official AsymMirai preprocessing (native resolution + normalization)."""
     import torchvision.transforms as transforms
 
     img_gray = img.convert("L")
@@ -372,7 +372,7 @@ def _heuristic_clinical_score(age, imc, antecedents_familiaux, densite_birads):
 
 
 def classify_risk_level(score):
-    """Classe un score (0-1) en 3 niveaux de risque, selon les seuils globaux."""
+    """Classify a score (0-1) into 3 risk levels, using the global thresholds."""
     if score < RISK_SEUIL_MODERE:
         return "faible"
     elif score < RISK_SEUIL_ELEVE:
@@ -383,9 +383,9 @@ def classify_risk_level(score):
 
 def fuse_multimodal_risk(risk_score_img, age, imc, antecedents_familiaux, densite_birads, has_clinical=True):
     """
-    Fusion pondérée image (50%) + clinique (50%).
-    Si has_clinical=False (aucune donnée clinique réellement renseignée),
-    le score final repose uniquement sur l'image — on n'invente pas de profil clinique moyen.
+    Weighted fusion of image (50%) + clinical (50%).
+    If has_clinical=False (no clinical data actually provided),
+    the final score relies on the image only: we do not invent an average clinical profile.
     """
     if not has_clinical:
         score_final = float(risk_score_img)
@@ -406,10 +406,10 @@ def fuse_multimodal_risk(risk_score_img, age, imc, antecedents_familiaux, densit
 
 def project_risk_timeline(risk_5y, n_years=5, exponent=0.4):
     """
-    Décompose un score de risque "à 5 ans" en courbe de risque cumulé année par année.
-    Modèle en loi de puissance : risque(t) = risk_5y * (t / n_years) ** exponent
-    exponent < 1 → courbe concave (le risque démarre relativement haut, puis ralentit),
-    cohérent avec un risque cumulé épidémiologique typique.
+    Break down a "5-year" risk score into a year-by-year cumulative risk curve.
+    Power-law model: risk(t) = risk_5y * (t / n_years) ** exponent
+    exponent < 1 → concave curve (risk starts relatively high, then slows down),
+    consistent with a typical epidemiological cumulative risk.
     """
     timeline = []
     for t in range(1, n_years + 1):
@@ -419,18 +419,18 @@ def project_risk_timeline(risk_5y, n_years=5, exponent=0.4):
 
 
 # =====================================================================
-#  Détection échographie (BreastMNIST / DenseNet-121)
+#  Ultrasound detection (BreastMNIST / DenseNet-121)
 # =====================================================================
 
 def normalize_imagenet_echo(img):
-    """Normalise une image uint8 [0,255] vers float32 normalisé ImageNet."""
+    """Normalize a uint8 [0,255] image to ImageNet-normalized float32."""
     return (img.astype(np.float32) / 255.0 - MEAN_ECHO) / STD_ECHO
 
 
 def run_echo_pipeline(img_pil):
     """
-    img_pil : image PIL (n'importe quel mode/taille)
-    Retourne (proba_moyenne_TTA, proba_originale)
+    img_pil: PIL image (any mode/size)
+    Returns (TTA mean probability, original probability)
     """
     from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
@@ -477,7 +477,7 @@ def detect_echo():
     except Exception as e:
         tb = traceback.format_exc()
         print("=" * 60)
-        print("ERREUR PIPELINE ÉCHOGRAPHIE :")
+        print("ULTRASOUND PIPELINE ERROR:")
         print(tb)
         print("=" * 60)
         return jsonify({"error": f"{str(e)}\n\n{tb}"}), 500
@@ -522,7 +522,7 @@ def detect():
             try:
                 arr = read_image(f.read(), f.filename)
                 images_np.append(arr)
-                print(f"  {field} chargée : shape={arr.shape}, dtype={arr.dtype}")
+                print(f"  {field} loaded: shape={arr.shape}, dtype={arr.dtype}")
             except Exception as e:
                 return jsonify({"error": f"Erreur lecture {field} : {e}"}), 400
 
@@ -559,7 +559,7 @@ def predict():
     if not asym_model_ok:
         return jsonify({"error": "Modèle de prédiction (AsymMirai) non chargé."}), 503
 
-    # --- Lecture des 4 vues mammographiques ---
+    # --- Reading the 4 mammographic views ---
     FIELD_MAP = {
         "image_l_cc":  "lcc",
         "image_r_cc":  "rcc",
@@ -577,7 +577,7 @@ def predict():
 
     has_all_images = len(images) == 4
 
-    # --- Lecture des données cliniques ---
+    # --- Reading the clinical data ---
     clinical_raw = request.form.get("clinical", "{}")
     try:
         clinical = json.loads(clinical_raw)
@@ -590,10 +590,10 @@ def predict():
 
     age      = _get("age", -1)
     bmi      = _get("bmi", -1)
-    density_num = _get("breast_density", -1)   # 1=A, 2=B, 3=C, 4=D côté front
+    density_num = _get("breast_density", -1)   # 1=A, 2=B, 3=C, 4=D on the frontend side
     fam_hist    = _get("family_history_1st", -1)  # 0/1
 
-    # Valeurs par défaut raisonnables si non renseignées (le modèle a besoin de nombres)
+    # Reasonable default values when not provided (the model needs numbers)
     age_val   = float(age) if age not in (-1, "", None) else 50.0
     bmi_val   = float(bmi) if bmi not in (-1, "", None) else 25.0
     fam_val   = bool(int(fam_hist)) if fam_hist not in (-1, "", None) else False
@@ -615,7 +615,7 @@ def predict():
                 has_clinical=has_clinical
             )
         else:
-            # Pas d'imagerie complète → on s'appuie uniquement sur le score clinique
+            # No complete imaging → rely on the clinical score only
             score_cli = _heuristic_clinical_score(age_val, bmi_val, fam_val, density_letter)
             result = {
                 "score_final":    round(score_cli, 4),
@@ -629,7 +629,7 @@ def predict():
     except Exception as e:
         tb = traceback.format_exc()
         print("=" * 60)
-        print("ERREUR PIPELINE PRÉDICTION :")
+        print("PREDICTION PIPELINE ERROR:")
         print(tb)
         print("=" * 60)
         return jsonify({"error": f"{str(e)}\n\n{tb}"}), 500
@@ -658,6 +658,6 @@ if __name__ == "__main__":
     print("  SeinTinelle — Backend Flask")
     print("  http://localhost:5001")
     print(f"  Seuil d'alerte (mammographie) : {RISK_THRESHOLD}")
-    print(f"  Seuil d'alerte (échographie)  : {BEST_THRESH_ECHO}")
+    print(f"  Alert threshold (ultrasound)  : {BEST_THRESH_ECHO}")
     print("=" * 55)
     app.run(debug=True, host="0.0.0.0", port=5001)

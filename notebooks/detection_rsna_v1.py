@@ -31,7 +31,7 @@ df = pd.read_csv(CHEMIN_CSV).sample(n=2000, random_state=42).reset_index(drop=Tr
 df['age'] = df['age'].fillna(df['age'].mean())
 
 # %% cellule 2
-print("\n--- 1. BENCHMARK CLINIQUE ---")
+print("\n--- 1. CLINICAL BENCHMARK ---")
 X_clinique = df[['age', 'implant']].values
 y = df['cancer'].values
 
@@ -99,7 +99,7 @@ modele_clinique_best = RandomForestClassifier(n_estimators=100) # Using RF, whic
 modele_clinique_best.fit(X_clin_train, y_train)
 
 auc_clinique = roc_auc_score(y_test, modele_clinique_best.predict_proba(X_clin_test)[:, 1])
-print(f"✅ AUC Clinique (Random Forest) : {auc_clinique:.4f}")
+print(f"✅ Clinical AUC (Random Forest) : {auc_clinique:.4f}")
 
 # %% cellule 4
 print("\n--- 2. BENCHMARK IMAGERIE (CNN) ---")

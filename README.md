@@ -1,146 +1,148 @@
-# SeinTinelle — détection et prédiction du cancer du sein par IA
+# SeinTinelle: AI-based breast cancer detection and risk prediction
 
-**Application web (site web)** réalisée en projet de groupe E3 (ESIEE Paris, 2025-2026), présentée au Jour des Projets. Six étudiants, encadrement : Mme Imen Kachouri.
+**Web application** built as an E3 group project (ESIEE Paris, 2025-2026) and presented at the Project Day. Team of six students, supervised by Mrs. Imen Kachouri.
 
-> **Dépôt privé.** Il contient le code de plusieurs coéquipiers. Aucun poids de modèle n'est inclus (voir « Poids des modèles »). Ne pas le rendre public sans l'accord écrit de tous les co-auteurs. Aucune licence n'est posée à la racine (tous droits réservés par défaut).
+> **Student prototype, not a medical device.** Nothing here constitutes a diagnosis or a clinical validation.
 >
-> **Prototype étudiant, pas un dispositif médical.** Rien ici ne constitue un diagnostic ni une validation clinique.
+> No model weights are included in this repository (see "Model weights"). No license file is set at the root (all rights reserved by default). The code is the work of several teammates; credits are in [WHO_DID_WHAT.md](WHO_DID_WHAT.md).
 
-## Le projet
+## The project
 
-SeinTinelle est une application web : un site (pages HTML/CSS/JS dans `frontend/`) relié à un backend Flask (`app.py`). Elle rassemble trois modèles d'IA répartis en deux modules :
+SeinTinelle is a web application: a website (HTML/CSS/JS pages in `frontend/`) connected to a Flask backend (`app.py`). It combines three AI models split across two modules:
 
-1. **Détection sur mammographies** : le modèle MammoScreen (Hugging Face, `ianpan/mammoscreen`, avec `ianpan/mammo-crop` pour le recadrage), appelé par le backend. Vues CC et MLO.
-2. **Détection sur échographies** : un DenseNet-121 (transfert depuis ImageNet, 100 dernières couches dégelées) entraîné sur BreastMNIST (MedMNIST v2), avec Focal Loss, suréchantillonnage de la classe maligne, TTA ×7 et Grad-CAM.
-3. **Prédiction du risque** : AsymMirai (Donnelly et al., Radiology 2024, fork du modèle Mirai) sur 4 vues mammographiques, combiné par fusion tardive à 4 variables cliniques (âge, IMC, antécédents familiaux, densité BI-RADS).
+1. **Mammography detection**: the MammoScreen model (Hugging Face, `ianpan/mammoscreen`, with `ianpan/mammo-crop` for cropping), called by the backend. CC and MLO views.
+2. **Ultrasound detection**: a DenseNet-121 (ImageNet transfer learning, last 100 layers unfrozen) trained on BreastMNIST (MedMNIST v2), with Focal Loss, oversampling of the malignant class, 7x TTA and Grad-CAM.
+3. **Risk prediction**: AsymMirai (Donnelly et al., Radiology 2024, a fork of the Mirai model) on 4 mammographic views, combined by late fusion with 4 clinical variables (age, BMI, family history, BI-RADS density).
 
-## Organisation du dépôt
+The website itself is in French (the target audience of the project).
 
-| Élément | Contenu |
+## Repository layout
+
+| Item | Content |
 |---|---|
-| `app.py` | Backend Flask : routes et chargement des trois modèles |
-| `frontend/` | Pages HTML/CSS/JS : accueil, détection, prédiction, consultation de praticiens, FAQ, à propos, page de test de cohérence |
-| `Mirai/` | AsymMirai, code de tiers sous licence MIT (voir `Mirai/LICENSE`) |
-| Poids des modèles | Non inclus dans le dépôt, voir « Poids des modèles » plus bas |
-| `notebooks/` | Notebooks Colab convertis en scripts, sans sorties ni images (détail ci-dessous) |
-| `QUI_A_FAIT_QUOI.md` | Répartition du travail dans l'équipe et origine du code |
+| `app.py` | Flask backend: routes and loading of the three models |
+| `frontend/` | HTML/CSS/JS pages: home, detection, prediction, practitioner lookup, FAQ, about, consistency test page |
+| `Mirai/` | AsymMirai, third-party code under the MIT license (see `Mirai/LICENSE`) |
+| Model weights | Not included in the repository, see "Model weights" below |
+| `notebooks/` | Colab notebooks converted to scripts, without outputs or images (details below) |
+| `WHO_DID_WHAT.md` | Work split within the team and origin of the code |
 
 ### Notebooks
 
-| Script | Origine |
+| Script | Origin |
 |---|---|
-| `asymmirai_multimodal.py` | Ayoub Mernissi : AsymMirai + données cliniques, interface Gradio, batch sur cohorte synthétique, métriques de survie |
-| `detection_rsna_v1.py` | Ayoub Mernissi : benchmark RSNA (données cliniques, ResNet50, fusion tardive) |
-| `cnn_cbis_ddsm_et_random_forest_wisconsin.py` | Ayoub Mernissi : CNN sur CBIS-DDSM (exécution interrompue) et Random Forest sur Wisconsin |
-| `echographie_breastmnist_densenet121.py` | Notebook de Rayan Oulboub (module échographie) |
-| `detection_1.py` | Notebook de l'équipe (dossier de Lilou Parrin) : essai de MammoScreen |
+| `asymmirai_multimodal.py` | Ayoub Mernissi: AsymMirai + clinical data, Gradio interface, batch run on a synthetic cohort, survival metrics |
+| `detection_rsna_v1.py` | Ayoub Mernissi: RSNA benchmark (clinical data, ResNet50, late fusion) |
+| `cnn_cbis_ddsm_et_random_forest_wisconsin.py` | Ayoub Mernissi: CNN on CBIS-DDSM (run interrupted) and Random Forest on Wisconsin |
+| `echographie_breastmnist_densenet121.py` | Rayan Oulboub's notebook (ultrasound module) |
+| `detection_1.py` | Team notebook (Lilou Parrin's folder): MammoScreen trial |
 
-## Qui a fait quoi
+## Who did what
 
-Le détail, avec les sources, est dans [QUI_A_FAIT_QUOI.md](QUI_A_FAIT_QUOI.md). En résumé, d'après le rapport du projet :
+The details, with sources, are in [WHO_DID_WHAT.md](WHO_DID_WHAT.md). In short, according to the project report:
 
-- **Lilou Parrin** : pages du site, intégration des trois modèles avec Flask, partie éthique, affiche.
-- **Nathan Gautier** : état de l'art de la prédiction, démarches d'accès aux données, pages du frontend, refonte visuelle.
-- **Maxime Lenfant** : site et premier modèle de détection, règles de travail GitHub.
-- **Ayoub Mernissi** : choix et import d'AsymMirai puis extension multimodale, benchmark RSNA, code échographie avec Rayan, parties prédiction et introduction du rapport.
-- **Rayan Oulboub** : chef de projet ; modèle de risque et échographie DenseNet-121 avec Ayoub, accès aux données CSAW.
-- **Antoine Navarro** : état de l'art deep learning / machine learning, notebook Kaggle ADMANI, participation au site et au premier modèle de détection.
+- **Lilou Parrin**: website pages, integration of the three models with Flask, ethics section, poster.
+- **Nathan Gautier**: state of the art on prediction, data access requests, frontend pages, visual redesign.
+- **Maxime Lenfant**: website and first detection model, GitHub working rules.
+- **Ayoub Mernissi**: selection and import of AsymMirai then multimodal extension, RSNA benchmark, ultrasound code with Rayan, prediction and introduction sections of the report.
+- **Rayan Oulboub**: project lead; risk model and DenseNet-121 ultrasound with Ayoub, access to the CSAW data.
+- **Antoine Navarro**: deep learning / machine learning state of the art, Kaggle ADMANI notebook, contribution to the website and the first detection model.
 
-La part exacte de chacun dans l'échographie reste **À COMPLÉTER** : le dépôt d'origine n'a qu'un seul commit initial, sans attribution par fichier.
+The exact share of each member in the ultrasound module is still **TO BE COMPLETED**: the original repository has only a single initial commit, with no per-file attribution.
 
-## Lancer l'application en local
+## Running the application locally
 
 ```bash
 pip install -r requirements.txt
 python app.py
 ```
 
-Ouvrir ensuite `frontend/index.html` dans un navigateur.
+Then open `frontend/index.html` in a browser.
 
-Avant de lancer `app.py`, il faut placer les poids des modèles aux emplacements attendus par le code (voir « Poids des modèles »). Sans eux, les modules concernés ne se chargent pas.
+Before running `app.py`, the model weights must be placed where the code expects them (see "Model weights"). Without them, the corresponding modules do not load.
 
-`app.py` démarre en mode debug sur `0.0.0.0` avec CORS ouvert : à utiliser uniquement en local, jamais exposé sur un réseau.
+`app.py` starts in debug mode on `0.0.0.0` with open CORS: use it only locally, never exposed on a network.
 
-## Résultats et performances
+## Results and performance
 
-Seuls figurent ici des chiffres que j'ai pu vérifier à la source, avec leur origine. **Notebook** : sortie enregistrée dans le notebook d'origine, relue cellule par cellule. **Source d'origine** : chiffre relu dans la publication ou la fiche du modèle, mesuré par ses auteurs et non par l'équipe. Aucun entraînement ni calcul n'a été relancé pour ce dépôt.
+Only figures I could verify at the source are listed here, with their origin. **Notebook**: output saved in the original notebook, read cell by cell. **Original source**: figure read from the publication or the model card, measured by its authors and not by the team. No training or computation was re-run for this repository.
 
-### Détection sur mammographies (MammoScreen, mesuré par l'auteur du modèle)
+### Mammography detection (MammoScreen, measured by the model's author)
 
-Source : fiche du modèle `ianpan/mammoscreen` sur Hugging Face. Entraînement sur CBIS-DDSM puis RSNA (challenge Kaggle), découpage 80 / 10 / 10 répété 3 fois, évaluation sur les 10 % de test.
+Source: the `ianpan/mammoscreen` model card on Hugging Face. Trained on CBIS-DDSM then RSNA (Kaggle challenge), 80 / 10 / 10 split repeated 3 times, evaluated on the 10% test set.
 
-| Mesure | Valeur |
+| Metric | Value |
 |---|---|
-| AUC, découpages 1 / 2 / 3 | 0,9464 / 0,9467 / 0,9422 (moyenne 0,9451, écart-type 0,002) |
-| Sensibilité / spécificité, seuil 0,0072 | 98,1 % / 65,4 % (± 7,2) |
-| Sensibilité / spécificité, seuil 0,0127 | 94,3 % / 78,7 % (± 0,9) |
-| Sensibilité / spécificité, seuil 0,0184 | 90,5 % / 84,8 % (± 2,7) |
+| AUC, splits 1 / 2 / 3 | 0.9464 / 0.9467 / 0.9422 (mean 0.9451, standard deviation 0.002) |
+| Sensitivity / specificity, threshold 0.0072 | 98.1% / 65.4% (± 7.2) |
+| Sensitivity / specificity, threshold 0.0127 | 94.3% / 78.7% (± 0.9) |
+| Sensitivity / specificity, threshold 0.0184 | 90.5% / 84.8% (± 2.7) |
 
-La fiche ne donne pas la taille du jeu de test. Ces valeurs décrivent le modèle publié, pas une mesure faite par l'équipe.
+The model card does not give the size of the test set. These values describe the published model, not a measurement made by the team.
 
-### Détection sur échographies (DenseNet-121, BreastMNIST)
+### Ultrasound detection (DenseNet-121, BreastMNIST)
 
-Source : notebook `notebooks/echographie_breastmnist_densenet121.py`. Jeu de test de 156 images (42 bénignes, 114 malignes), TTA ×7, seuil fixé à la main à 0,735 dans le code.
+Source: notebook `notebooks/echographie_breastmnist_densenet121.py`. Test set of 156 images (42 benign, 114 malignant), 7x TTA, threshold set by hand to 0.735 in the code.
 
-| Exécution enregistrée | Accuracy | AUC | Précision | Rappel | F1 |
+| Recorded run | Accuracy | AUC | Precision | Recall | F1 |
 |---|---|---|---|---|---|
-| Cellule 15 | 87,82 % | 0,8782 | 90,60 % | 92,98 % | 91,77 % |
-| Cellule 21 (autre exécution) | 89,10 % | 0,9229 | 90,08 % | 95,61 % | 92,77 % |
+| Cell 15 | 87.82% | 0.8782 | 90.60% | 92.98% | 91.77% |
+| Cell 21 (another run) | 89.10% | 0.9229 | 90.08% | 95.61% | 92.77% |
 
-Détail de la cellule 15 : classe bénigne précision 0,79 et rappel 0,74 (42 images), classe maligne précision 0,91 et rappel 0,93 (114 images). Le modèle repère donc mieux les cas malins que les cas bénins. Les deux exécutions donnent des valeurs différentes pour le même notebook, et le test est petit : à lire comme un ordre de grandeur (accuracy autour de 88-89 %), pas comme une performance établie.
+Cell 15 detail: benign class precision 0.79 and recall 0.74 (42 images), malignant class precision 0.91 and recall 0.93 (114 images). The model therefore detects malignant cases better than benign ones. The two runs give different values for the same notebook, and the test set is small: read this as an order of magnitude (accuracy around 88-89%), not as an established performance.
 
-### Prédiction du risque à 1-5 ans (AsymMirai, mesuré par ses auteurs)
+### Risk prediction at 1-5 years (AsymMirai, measured by its authors)
 
-Source : Donnelly et al., « AsymMirai: Interpretable Mammography-based Deep Learning Model for 1-5-year Breast Cancer Risk Prediction », Radiology 2024, 310(3):e232780. Évaluation sur la base EMBED (16 314 patientes pour l'horizon à 1 an).
+Source: Donnelly et al., "AsymMirai: Interpretable Mammography-based Deep Learning Model for 1-5-year Breast Cancer Risk Prediction", Radiology 2024, 310(3):e232780. Evaluated on the EMBED dataset (16,314 patients for the 1-year horizon).
 
-| Horizon | AUC d'AsymMirai (IC à 95 %) | AUC de Mirai, pour comparaison |
+| Horizon | AsymMirai AUC (95% CI) | Mirai AUC, for comparison |
 |---|---|---|
-| 1 an | 0,79 (0,73-0,85) | 0,84 |
-| 3 ans | 0,68 (0,65-0,71) | 0,72 |
-| 5 ans | 0,66 (0,63-0,69) | 0,71 |
+| 1 year | 0.79 (0.73-0.85) | 0.84 |
+| 3 years | 0.68 (0.65-0.71) | 0.72 |
+| 5 years | 0.66 (0.63-0.69) | 0.71 |
 
-Notre extension (fusion avec l'âge, l'IMC, les antécédents familiaux et la densité BI-RADS) n'a aucune performance mesurée : l'équipe n'a pas obtenu l'accès aux bases longitudinales (CSAW, EMBED), et le méta-modèle XGBoost n'a jamais été entraîné. La page interne `test_coherence.html` vérifie seulement que le score augmente avec l'âge, l'IMC, la densité et les antécédents ; ce n'est pas une mesure de performance.
+Our extension (fusion with age, BMI, family history and BI-RADS density) has no measured performance: the team did not get access to the longitudinal datasets (CSAW, EMBED), and the XGBoost meta-model was never trained. The internal page `test_coherence.html` only checks that the score increases with age, BMI, density and family history; it is not a performance measurement.
 
-### Benchmark RSNA (notebook `detection_rsna_v1.py`)
+### RSNA benchmark (notebook `detection_rsna_v1.py`)
 
-Source : sorties du notebook. Les lignes 2 à 5 portent sur un jeu équilibré de 1000 patientes (500 cancers, 500 sains), découpage 80 / 20 : 200 patientes de test.
+Source: notebook outputs. Rows 2 to 5 use a balanced set of 1,000 patients (500 cancer, 500 healthy), 80 / 20 split: 200 test patients.
 
-| Modèle | AUC | Cellule |
+| Model | AUC | Cell |
 |---|---|---|
-| Random Forest, âge et implant (jeu équilibré) | 0,6082 | 3 |
-| ResNet50 sur l'imagerie | 0,4735 | 4 |
-| EfficientNet sur l'imagerie | 0,4101 | 4 |
-| Fusion tardive (méta-modèle) | 0,5594 | 6 |
-| XGBoost / Random Forest / SVM, âge et implant (benchmark clinique initial) | 0,6350 / 0,6647 / 0,3873 | 2 |
+| Random Forest, age and implant (balanced set) | 0.6082 | 3 |
+| ResNet50 on imaging | 0.4735 | 4 |
+| EfficientNet on imaging | 0.4101 | 4 |
+| Late fusion (meta-model) | 0.5594 | 6 |
+| XGBoost / Random Forest / SVM, age and implant (initial clinical benchmark) | 0.6350 / 0.6647 / 0.3873 | 2 |
 
-Les modèles d'imagerie testés ici sont à ou sous 0,5 : ils ne montrent aucun signal exploitable sur ce protocole, et la fusion n'apporte rien par rapport au modèle clinique seul.
+The imaging models tested here are at or below 0.5: they show no usable signal under this protocol, and fusion brings nothing over the clinical model alone.
 
-### Données tabulaires (Wisconsin, notebook `cnn_cbis_ddsm_et_random_forest_wisconsin.py`)
+### Tabular data (Wisconsin, notebook `cnn_cbis_ddsm_et_random_forest_wisconsin.py`)
 
-Random Forest (100 arbres) sur 569 échantillons (357 bénins, 212 malins), découpage 80 / 20 (455 / 114) : accuracy 97,37 %, AUC 0,9929 (cellule 14). Ce jeu contient des mesures cellulaires, pas des images : il ne dit rien de la performance sur mammographies. Le CNN sur CBIS-DDSM du même notebook a été interrompu et n'a donné aucune métrique.
+Random Forest (100 trees) on 569 samples (357 benign, 212 malignant), 80 / 20 split (455 / 114): accuracy 97.37%, AUC 0.9929 (cell 14). This dataset contains cell measurements, not images: it says nothing about performance on mammograms. The CNN on CBIS-DDSM in the same notebook was interrupted and produced no metrics.
 
-### Écarts avec le rapport du projet
+### Differences with the project report
 
-Le rapport affirme une précision de 92 % pour l'échographie : aucune sortie de notebook ne la confirme, elle n'est pas reprise ici. Il donne un seuil de 0,699 alors que le code utilise 0,735, une AUC d'AsymMirai à 1 an de 0,69 dans une section (la publication donne 0,79), et des poids de fusion de 0,70 / 0,30 alors que le code utilise 0,50 / 0,50.
+The report claims 92% precision for ultrasound: no notebook output confirms it, so it is not used here. It gives a threshold of 0.699 while the code uses 0.735, a 1-year AsymMirai AUC of 0.69 in one section (the publication gives 0.79), and fusion weights of 0.70 / 0.30 while the code uses 0.50 / 0.50.
 
-## Provenance et licences
+## Provenance and licenses
 
-- Code de l'application : travail collectif de l'équipe SeinTinelle. Ce dépôt a un historique neuf : l'attribution par fichier n'y figure pas, la répartition est dans `QUI_A_FAIT_QUOI.md`.
-- AsymMirai : Donnelly, Moffett, Barnett, Trivedi, Schwartz, Lo, Rudin, Radiology 2024 ; code sous licence MIT (voir `Mirai/LICENSE`). Mirai original : Yala et al. (2021).
-- MammoScreen : modèle tiers appelé via Hugging Face, licence Apache-2.0 d'après sa fiche. mammo-crop : modèle tiers du même auteur, licence Apache-2.0 d'après sa fiche (la fiche ne précise pas la licence des données d'entraînement RSNA).
-- BreastMNIST : Yang et al. (2023), MedMNIST v2. Le README de MedMNIST indique le code sous Apache-2.0 et les jeux de données sous CC BY 4.0 (sauf DermaMNIST) ; il demande aussi de citer les articles des données sources.
-- Aucune donnée patient dans ce dépôt.
+- Application code: collective work of the SeinTinelle team. This repository has a fresh history: per-file attribution is not recorded in it, the split is in `WHO_DID_WHAT.md`.
+- AsymMirai: Donnelly, Moffett, Barnett, Trivedi, Schwartz, Lo, Rudin, Radiology 2024; code under the MIT license (see `Mirai/LICENSE`). Original Mirai: Yala et al. (2021).
+- MammoScreen: third-party model called via Hugging Face, Apache-2.0 license according to its model card. mammo-crop: third-party model by the same author, Apache-2.0 license according to its model card (the card does not state the license of the RSNA training data).
+- BreastMNIST: Yang et al. (2023), MedMNIST v2. The MedMNIST README states the code is under Apache-2.0 and the datasets under CC BY 4.0 (except DermaMNIST); it also asks to cite the papers of the source datasets.
+- No patient data in this repository.
 
-## Poids des modèles
+## Model weights
 
-Ces fichiers ne sont volontairement pas dans le dépôt. Ce que j'ai pu vérifier sur les pages officielles :
+These files are deliberately not in the repository. What I could verify on the official pages:
 
-| Fichier attendu par le code | Statut | Pourquoi il n'est pas inclus |
+| File expected by the code | Status | Why it is not included |
 |---|---|---|
-| `Mirai/snapshots/mgh_mammo_MIRAI_Base_May20_2019.p` (Mirai, 50 Mo) | Droits contradictoires | Le README de `yala/Mirai` dit que le modèle entraîné et le code sont sous licence MIT et renvoie vers une image Docker pour récupérer les poids. Le rapport de l'équipe écrit au contraire que ces poids ne sont pas redistribuables sans accord institutionnel. Dans le doute, je ne les redistribue pas : on les télécharge à la source. |
-| `Mirai/snapshots/trained_asymmirai.pt` (AsymMirai, 45 Mo) | Licence non précisée | Le dépôt `jdonnelly36/AsymMirai` ne contient pas ce fichier : son README renvoie vers un lien de téléchargement et dit seulement que le modèle est « open to access and use » avec attribution au groupe. Aucune licence n'est donnée pour les poids, et rien n'est dit sur l'effet des conditions d'accès à la base EMBED. |
-| `breast_cancer_densenet121_final.keras` (échographie, 53 Mo) | Travail de l'équipe | Modèle entraîné par l'équipe sur BreastMNIST. Pas de licence posée, et le fichier est le travail de plusieurs personnes : je ne le publie pas sans leur accord. |
+| `Mirai/snapshots/mgh_mammo_MIRAI_Base_May20_2019.p` (Mirai, 50 MB) | Conflicting rights | The `yala/Mirai` README says the trained model and the code are under the MIT license and points to a Docker image to get the weights. The team's report states on the contrary that these weights cannot be redistributed without an institutional agreement. When in doubt, I do not redistribute them: download them from the source. |
+| `Mirai/snapshots/trained_asymmirai.pt` (AsymMirai, 45 MB) | License not specified | The `jdonnelly36/AsymMirai` repository does not contain this file: its README points to a download link and only says the model is "open to access and use" with credit to the group. No license is given for the weights, and nothing is said about the effect of the EMBED dataset access conditions. |
+| `breast_cancer_densenet121_final.keras` (ultrasound, 53 MB) | Team work | Model trained by the team on BreastMNIST. No license set, and the file is the work of several people: I do not publish it without their agreement. |
 
-Les poids de MammoScreen et de mammo-crop sont téléchargés automatiquement depuis Hugging Face au démarrage (`snapshot_download` dans `app.py`).
+The MammoScreen and mammo-crop weights are downloaded automatically from Hugging Face at startup (`snapshot_download` in `app.py`).
 
-Pour faire tourner l'application : récupérer les poids AsymMirai (et Mirai si besoin) via les liens du README de leurs dépôts d'origine, les placer dans `Mirai/snapshots/`, et mettre le fichier `.keras` à la racine du dépôt.
+To run the application: get the AsymMirai weights (and Mirai if needed) through the links in the README of their original repositories, place them in `Mirai/snapshots/`, and put the `.keras` file at the root of the repository.

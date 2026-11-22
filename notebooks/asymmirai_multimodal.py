@@ -1,85 +1,85 @@
-# Conversion en script des cellules de : MIRAI_multimodal_FINAL_commented.ipynb (Drive personnel)
-# Sorties et images retirées.
+# Script conversion of the cells of: MIRAI_multimodal_FINAL_commented.ipynb (personal Drive)
+# Outputs and images removed.
 
 # %% [markdown] cellule 1
 # # 🩺 AsymMirai Multimodal — Notebook Complet
-# ### Prédiction du risque de cancer du sein : Vision + Données Cliniques
+# ### Breast cancer risk prediction: Vision + Clinical Data
 # 
-# **Pipeline complet en 6 étapes :**
-# 1. 📦 Installation des dépendances
-# 2. 🧠 Chargement du modèle AsymMirai
-# 3. 🔬 Ensemble Model (fusion imagerie + clinique)
-# 4. 🖥️ Interface Gradio multimodale avec heatmaps
-# 5. 📊 Batch Testing sur cohorte de patientes
-# 6. 📈 Métriques de survie (AUC-ROC temporelle + C-Index)
+# **Full pipeline in 6 steps:**
+# 1. 📦 Installing the dependencies
+# 2. 🧠 Loading the AsymMirai model
+# 3. 🔬 Ensemble Model (imaging + clinical fusion)
+# 4. 🖥️ Multimodal Gradio interface with heatmaps
+# 5. 📊 Batch Testing on a cohort of patients
+# 6. 📈 Survival metrics (time-dependent AUC-ROC + C-Index)
 # 
-# > ⚠️ **Usage recherche uniquement.** Ne remplace pas l'avis d'un radiologue qualifié.
+# > ⚠️ **Research use only.** Does not replace the opinion of a qualified radiologist.
 # >
-# > **Prérequis :** Déposer `asymmirai_weights.pth` dans `/content/snapshots/` avant la cellule 2.
+# > **Prerequisite:** Place `asymmirai_weights.pth` in `/content/snapshots/` before cell 2.
 # 
-# > 💡 **Crédit et Source du modèle :**
-# > Ce projet s'appuie sur le modèle d'apprentissage profond pré-entraîné **AsymMirai**, développé par Jon Donnelly dans le cadre de ses recherches.
-# > Lien vers le dépôt officiel : [GitHub - jdonnelly36/AsymMirai](https://github.com/jdonnelly36/AsymMirai)
+# > 💡 **Credit and model source:**
+# > This project builds on the pre-trained deep learning model **AsymMirai**, developed by Jon Donnelly as part of his research.
+# > Link to the official repository: [GitHub - jdonnelly36/AsymMirai](https://github.com/jdonnelly36/AsymMirai)
 
 # %% [markdown] cellule 2
-# ## 📦 Cellule 1 — Installation des dépendances
+# ## 📦 Cell 1 — Installing the dependencies
 
 # %% cellule 3
 # ═══════════════════════════════════════════════════════════════════════════
-# CELLULE 1 — INSTALLATION DES DÉPENDANCES
-# Installe toutes les librairies nécessaires pour les 4 blocs du projet.
-# Durée estimée : ~2-3 minutes sur Colab.
+# CELL 1 — INSTALLING THE DEPENDENCIES
+# Installs all the libraries needed for the 4 blocks of the project.
+# Estimated duration: ~2-3 minutes on Colab.
 # ═══════════════════════════════════════════════════════════════════════════
 
 # gradio      → interface web interactive (upload images + sliders)
-# huggingface_hub → accès aux modèles pré-entraînés sur HF Hub
-# lifelines    → métriques de survie (C-Index, Kaplan-Meier)
-# xgboost      → meta-modèle de fusion imagerie + clinique
+# huggingface_hub → access to pre-trained models on the HF Hub
+# lifelines    → survival metrics (C-Index, Kaplan-Meier)
+# xgboost      → imaging + clinical fusion meta-model
 # scikit-survival → AUC-ROC temporelle (cumulative_dynamic_auc)
-# tqdm         → barre de progression pour les boucles longues
+# tqdm         → progress bar for long loops
 !pip install --upgrade gradio huggingface_hub lifelines xgboost scikit-survival tqdm -q
 
-# Vérification de la disponibilité de scikit-survival (optionnel mais recommandé)
+# Checking whether scikit-survival is available (optional but recommended)
 try:
     import sksurv
-    print('✅ scikit-survival disponible → AUC temporelle rigoureuse activée')
+    print('✅ scikit-survival available → rigorous time-dependent AUC enabled')
 except ImportError:
-    print('ℹ️  scikit-survival absent → repli sur AUC naïve (sklearn)')
+    print('ℹ️  scikit-survival missing → falling back to naive AUC (sklearn)')
 
-print('\n✅ Installation terminée — passez à la cellule suivante')
+print('\n✅ Installation finished — go to the next cell')
 
 # %% [markdown] cellule 4
 # ## 🔧 Cellule 2 — Imports globaux & clonage AsymMirai
 
 # %% cellule 5
 # ═══════════════════════════════════════════════════════════════════════════
-# CELLULE 2 — IMPORTS GLOBAUX ET CLONAGE DU DÉPÔT ASYMMIRAI
-# Toutes les librairies utilisées dans les cellules suivantes sont importées
-# ici une seule fois pour éviter toute redondance.
+# CELL 2 — GLOBAL IMPORTS AND CLONING THE ASYMMIRAI REPOSITORY
+# All the libraries used in the following cells are imported
+# here once to avoid any redundancy.
 # ═══════════════════════════════════════════════════════════════════════════
 
 # ── Stdlib Python ─────────────────────────────────────────────────────────
-# os/sys : gestion des chemins et du PATH Python
-# json/pickle : sérialisation des résultats et du meta-modèle XGBoost
-# warnings : suppression des avertissements mineurs non bloquants
-# random : reproductibilité de la cohorte synthétique
+# os/sys : path handling and Python PATH
+# json/pickle : serialization of the results and of the XGBoost meta-model
+# warnings : suppression of minor non-blocking warnings
+# random : reproducibility of the synthetic cohort
 import os, sys, json, pickle, warnings, random
 from pathlib import Path
 from datetime import datetime
 
 
-# ── Calcul scientifique ────────────────────────────────────────────────────
-# numpy  : opérations matricielles sur les heatmaps et les vecteurs de risque
-# pandas : gestion des données cliniques et export CSV/JSON
+# ── Scientific computing ───────────────────────────────────────────────────
+# numpy  : matrix operations on the heatmaps and risk vectors
+# pandas : handling of clinical data and CSV/JSON export
 import numpy as np
 import pandas as pd
 
 # ── Deep Learning ──────────────────────────────────────────────────────────
-# torch           : inférence GPU du modèle AsymMirai
-# F               : softmax appliqué sur les logits de sortie
-# torchvision     : pipeline de normalisation des mammographies
-# PIL.Image       : chargement et manipulation des images
-# tqdm            : progression visuelle lors du batch testing
+# torch           : GPU inference of the AsymMirai model
+# F               : softmax applied to the output logits
+# torchvision     : normalization pipeline for the mammograms
+# PIL.Image       : loading and manipulating images
+# tqdm            : visual progress during batch testing
 import torch
 import torch.nn.functional as F
 import torchvision.transforms as transforms
@@ -88,56 +88,56 @@ from tqdm import tqdm
 
 
 # ── Visualisation ──────────────────────────────────────────────────────────
-# matplotlib (backend Agg) : génération des graphiques sans affichage écran
-# cm : colormap 'jet' utilisée pour les heatmaps d'asymétrie
+# matplotlib (Agg backend) : generating charts without screen display
+# cm : 'jet' colormap used for the asymmetry heatmaps
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
 
-# ── Évaluation statistique ─────────────────────────────────────────────────
-# roc_curve / auc    : courbes ROC pour les 3 horizons temporels
-# brier_score_loss   : calibration des probabilités prédites
-# roc_auc_score      : AUC naïve (fallback si scikit-survival absent)
+# ── Statistical evaluation ─────────────────────────────────────────────────
+# roc_curve / auc    : ROC curves for the 3 time horizons
+# brier_score_loss   : calibration of the predicted probabilities
+# roc_auc_score      : naive AUC (fallback if scikit-survival is missing)
 from sklearn.metrics import roc_curve, auc as sklearn_auc, brier_score_loss, roc_auc_score
 
 warnings.filterwarnings('ignore')
 
-# ── Clonage du dépôt AsymMirai ──
+# ── Cloning the AsymMirai repository ──
 !rm -rf /content/Mirai
 !git clone https://github.com/jdonnelly36/AsymMirai.git /content/Mirai -q
 
 sys.path.append(os.path.abspath('/content/Mirai'))
 sys.path.append(os.path.abspath('/content/Mirai/asymmetry_model'))
 
-# ── Détection du device GPU/CPU ──
+# ── GPU/CPU device detection ──
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f'🖥️  Device configuré : {device}')
-print('✅ Imports terminés — passez à la cellule suivante')
+print(f'🖥️  Device configured : {device}')
+print('✅ Imports finished — go to the next cell')
 
 # %% [markdown] cellule 6
-# ## 🧠 Cellule 3 — Chargement du modèle AsymMirai
-# > **Prérequis :** Le fichier `asymmirai_weights.pth` doit être présent dans `/content/snapshots/`.
+# ## 🧠 Cell 3 — Loading the AsymMirai model
+# > **Prerequisite:** The file `asymmirai_weights.pth` must be present in `/content/snapshots/`.
 
 # %% cellule 7
 # ═══════════════════════════════════════════════════════════════════════════
-# CELLULE 3 — CHARGEMENT DU MODÈLE ASYMMIRAI
-# Charge les poids du modèle depuis le disque et prépare l'inférence.
-# Le modèle est chargé UNE SEULE FOIS et réutilisé dans toutes les cellules.
+# CELL 3 — LOADING THE ASYMMIRAI MODEL
+# Loads the model weights from disk and prepares inference.
+# The model is loaded ONLY ONCE and reused in all the cells.
 # ═══════════════════════════════════════════════════════════════════════════
 
-# get_asymmetries est un module interne du dépôt AsymMirai (cloné cellule 2).
-# Il expose la fonction get_asymmetries() qui calcule les cartes d'asymétrie
-# entre sein gauche et droit à partir des 4 vues mammographiques.
+# get_asymmetries is an internal module of the AsymMirai repository (cloned in cell 2).
+# It exposes the get_asymmetries() function which computes the asymmetry maps
+# between the left and right breast from the 4 mammographic views.
 
 from get_asymmetries import get_asymmetries
 
-# ── Fonction de chargement ─────────────────────────────────────────────────
-# On utilise torch.load() plutôt que model.load_state_dict() car le fichier
-# .pth contient l'objet modèle complet (LocalizedDifModel), pas seulement
-# les poids. weights_only=False est requis pour ce format de sérialisation.
-# model.eval() désactive Dropout/BatchNorm pour l'inférence (pas le train).
+# ── Loading function ───────────────────────────────────────────────────────
+# We use torch.load() rather than model.load_state_dict() because the
+# .pth file contains the complete model object (LocalizedDifModel), not only
+# the weights. weights_only=False is required for this serialization format.
+# model.eval() disables Dropout/BatchNorm for inference (not training).
 def load_asymmirai(weights_path: str = '/content/snapshots/asymmirai_weights.pth'):
     """
     Charge le modèle AsymMirai depuis les poids pré-entraînés.
@@ -150,21 +150,21 @@ def load_asymmirai(weights_path: str = '/content/snapshots/asymmirai_weights.pth
     --------
     torch.nn.Module en mode eval, ou None en cas d'erreur
     """
-    print(f'⏳ Chargement des poids depuis : {weights_path}')
+    print(f'⏳ Loading the weights from : {weights_path}')
     if not os.path.exists(weights_path):
-        print(f'❌ Fichier introuvable : {weights_path}')
-        print('   → Déposez asymmirai_weights.pth dans /content/snapshots/')
+        print(f'❌ File not found : {weights_path}')
+        print('   → Place asymmirai_weights.pth in /content/snapshots/')
         return None
     try:
         model = torch.load(weights_path, map_location=device, weights_only=False)
         model.eval()
-        print('✅ Modèle AsymMirai chargé avec succès')
+        print('✅ AsymMirai model loaded successfully')
         return model
     except Exception as e:
-        print(f'❌ Erreur de chargement : {e}')
+        print(f'❌ Loading error : {e}')
         return None
 
-# Chargement unique — variable globale réutilisée dans toutes les cellules
+# Single loading — global variable reused in all the cells
 asym_model = load_asymmirai()
 
 # %% [markdown] cellule 8
@@ -173,30 +173,30 @@ asym_model = load_asymmirai()
 # 
 # | Variable | Encodage |
 # |---|---|
-# | Âge | Min-max normalisé [20, 80] |
-# | IMC | Min-max normalisé [15, 45] |
-# | Antécédents familiaux | Binaire 0/1 |
-# | Densité BI-RADS | Ordinale A=0, B=0.33, C=0.67, D=1 |
+# | Age | Min-max normalized [20, 80] |
+# | BMI | Min-max normalized [15, 45] |
+# | Family history | Binary 0/1 |
+# | BI-RADS density | Ordinal A=0, B=0.33, C=0.67, D=1 |
 
 # %% cellule 9
 # ═══════════════════════════════════════════════════════════════════════════
 # CELLULE 4 — BLOC 1 : ENSEMBLE MULTIMODAL (version heatmap-based)
 # ═══════════════════════════════════════════════════════════════════════════
 
-# ── Encodage de la densité BI-RADS ────────────────────────────────────────
-# La classification ACR (A, B, C, D) est ordinale ; on la mappe sur [0,3]
-# avant normalisation min-max dans encode_clinical_features().
+# ── BI-RADS density encoding ───────────────────────────────────────────────
+# The ACR classification (A, B, C, D) is ordinal; it is mapped to [0,3]
+# before min-max normalization in encode_clinical_features().
 
 BIRADS_DENSITY_MAP = {'A': 0.0, 'B': 1.0, 'C': 2.0, 'D': 3.0}
 
 
 # ── encode_clinical_features ──────────────────────────────────────────────
-# Normalise les 4 variables cliniques dans [0,1] pour les rendre homogènes
-# avec le vecteur de risque AsymMirai avant concaténation dans XGBoost.
+# Normalizes the 4 clinical variables to [0,1] to make them homogeneous
+# with the AsymMirai risk vector before concatenation in XGBoost.
 # Age    : min-max [30, 80]
 # IMC    : min-max [15, 45]
 # ATCD   : binaire 0/1
-# Densité: ordinale divisée par 3 → [0, 0.33, 0.67, 1.0]
+# Density: ordinal divided by 3 → [0, 0.33, 0.67, 1.0]
 def encode_clinical_features(age, imc, antecedents_familiaux, densite_birads):
     age_norm    = np.clip((age - 30) / (80 - 30), 0.0, 1.0)
     imc_norm    = np.clip((imc - 15) / (45 - 15), 0.0, 1.0)
@@ -207,12 +207,12 @@ def encode_clinical_features(age, imc, antecedents_familiaux, densite_birads):
 
 
 # ── preprocess_rsna ────────────────────────────────────────────────────────
-# Pipeline de pré-traitement conforme au standard RSNA Mammography :
-#  1. Flip horizontal optionnel (vues droites ramenées à la même orientation)
+# Preprocessing pipeline compliant with the RSNA Mammography standard:
+#  1. Optional horizontal flip (right views brought to the same orientation)
 #  2. Conversion en niveaux de gris (L)
-#  3. Normalisation percentile 1-99 pour s'affranchir des artefacts extrêmes
+#  3. Percentile 1-99 normalization to get rid of extreme artifacts
 #  4. Redimensionnement 256×256 + normalisation ImageNet (μ=0.5, σ=0.5)
-#  5. unsqueeze(0) : ajout de la dimension batch attendue par le modèle
+#  5. unsqueeze(0): adds the batch dimension expected by the model
 def preprocess_rsna(img, flip=False):
     if flip:
         img = img.transpose(Image.FLIP_LEFT_RIGHT)
@@ -235,11 +235,11 @@ def preprocess_rsna(img, flip=False):
 
 
 # ── extract_heatmap_score ──────────────────────────────────────────────────
-# Convertit la heatmap 8×8 brute du modèle en un score scalaire [0, 1].
-# Stratégie : on mesure le 'contraste' (max – mean) / mean, qui est élevé
-# si le modèle a détecté une zone anormale localisée, faible si la heatmap
-# est uniforme. Une sigmoïde douce mappe le contraste dans [0, 1].
-# Les coordonnées du maximum (row, col) servent à localiser l'asymétrie.
+# Converts the raw 8×8 heatmap of the model into a scalar score [0, 1].
+# Strategy: we measure the 'contrast' (max – mean) / mean, which is high
+# if the model detected a localized abnormal area, low if the heatmap
+# is uniform. A soft sigmoid maps the contrast into [0, 1].
+# The coordinates of the maximum (row, col) are used to locate the asymmetry.
 def extract_heatmap_score(heatmap_tensor):
     """
     Score d'asymétrie depuis la heatmap 8x8.
@@ -248,26 +248,26 @@ def extract_heatmap_score(heatmap_tensor):
     """
     h = heatmap_tensor.cpu().numpy().squeeze().astype(np.float32)
 
-    # Valeurs brutes — pas de normalisation ici
+    # Raw values — no normalization here
     h_max    = float(h.max())
     h_mean   = float(h.mean())
     h_std    = float(h.std())
 
-    # Score = intensité relative du pic par rapport à la moyenne
-    # Si tout est plat → h_max ≈ h_mean → score bas
-    # Si pic fort     → h_max >> h_mean → score élevé
+    # Score = relative intensity of the peak compared to the mean
+    # If everything is flat → h_max ≈ h_mean → low score
+    # If strong peak     → h_max >> h_mean → high score
     if h_mean > 0:
         contrast = (h_max - h_mean) / (h_mean + 1e-6)
     else:
         contrast = 0.0
 
-    # Normaliser le contrast dans [0, 1] avec sigmoid douce
-    # contrast ~ 0.5 → score ~ 0.3 (faible)
-    # contrast ~ 2.0 → score ~ 0.6 (modéré)
-    # contrast ~ 5.0 → score ~ 0.9 (élevé)
+    # Normalize the contrast into [0, 1] with a soft sigmoid
+    # contrast ~ 0.5 → score ~ 0.3 (low)
+    # contrast ~ 2.0 → score ~ 0.6 (moderate)
+    # contrast ~ 5.0 → score ~ 0.9 (high)
     score = float(1 / (1 + np.exp(-0.8 * (contrast - 2.5))))
 
-    # Coordonnées du maximum
+    # Coordinates of the maximum
     idx      = np.unravel_index(np.argmax(h), h.shape)
     row, col = int(idx[0]), int(idx[1])
 
@@ -276,13 +276,13 @@ def extract_heatmap_score(heatmap_tensor):
 
 
 # ── get_asymmirai_risk_vector ──────────────────────────────────────────────
-# Orchestre l'inférence complète AsymMirai sur les 4 vues mammographiques :
-#  1. Prétraitement de chaque vue (RCC et RMLO flippées pour normaliser côté)
-#  2. Inférence sans gradient (torch.no_grad) → output logits + heatmaps
-#  3. Calcul du score d'asymétrie global (moyenne CC + MLO)
-#  4. Construction du vecteur de risque sur 5 ans par scaling progressif :
+# Orchestrates the full AsymMirai inference on the 4 mammographic views:
+#  1. Preprocessing of each view (RCC and RMLO flipped to normalize the side)
+#  2. Inference without gradient (torch.no_grad) → output logits + heatmaps
+#  3. Computation of the global asymmetry score (mean of CC + MLO)
+#  4. Building the 5-year risk vector by progressive scaling:
 #     an1 = asym×0.50, an2 = ×0.65, ..., an5 = ×1.00
-#  5. Remappage heatmap 8×8 → espace image 256×256 pour l'affichage
+#  5. Remapping heatmap 8×8 → 256×256 image space for display
 def get_asymmirai_risk_vector(model, img_lcc, img_rcc, img_lmlo, img_rmlo, dev):
 
     t_lcc  = preprocess_rsna(img_lcc,  flip=False).to(dev)
@@ -301,10 +301,10 @@ def get_asymmirai_risk_vector(model, img_lcc, img_rcc, img_lmlo, img_rmlo, dev):
     score_cc,  row_cc,  col_cc  = extract_heatmap_score(other[0]['heatmap'])
     score_mlo, row_mlo, col_mlo = extract_heatmap_score(other[1]['heatmap'])
 
-    # Score global = moyenne des deux vues
+    # Global score = mean of the two views
     asym_score = (score_cc + score_mlo) / 2.0
 
-    # Log des scores pour debug
+    # Log of the scores for debugging
     print(f"  score_cc={score_cc:.3f}  score_mlo={score_mlo:.3f}  asym_score={asym_score:.3f}")
 
     base = asym_score
@@ -317,7 +317,7 @@ def get_asymmirai_risk_vector(model, img_lcc, img_rcc, img_lmlo, img_rmlo, dev):
     ], dtype=np.float32)
     risk_vector = np.clip(risk_vector, 0.0, 1.0)
 
-    # Coordonnées dans l'espace image (heatmap 8x8 → espace 256x256)
+    # Coordinates in image space (heatmap 8x8 → 256x256 space)
     cc_x  = float(col_cc  * 256 / 8 + 16)
     cc_y  = float(row_cc  * 256 / 8 + 16)
     mlo_x = float(col_mlo * 256 / 8 + 16)
@@ -334,9 +334,9 @@ def get_asymmirai_risk_vector(model, img_lcc, img_rcc, img_lmlo, img_rmlo, dev):
 
 
 # ── _heuristic_clinical_score ─────────────────────────────────────────────
-# Score clinique de fallback quand XGBoost n'est pas encore entraîné.
-# Pondérations issues de la littérature sur les facteurs de risque du cancer
-# du sein : densité mammaire (40%) et antécédents familiaux (35%) dominent.
+# Fallback clinical score when XGBoost is not trained yet.
+# Weights taken from the literature on breast cancer risk factors:
+# breast density (40%) and family history (35%) dominate.
 def _heuristic_clinical_score(clinical_vector):
     age_n, imc_n, atcd, densite = clinical_vector
     return 0.15 * age_n + 0.10 * imc_n + 0.35 * atcd + 0.40 * densite
@@ -345,15 +345,15 @@ def _heuristic_clinical_score(clinical_vector):
 
 # ── EnsembleModel ──────────────────────────────────────────────────────────
 # Classe de fusion tardive (Late Fusion) combinant :
-#   - Le vecteur de risque AsymMirai (5 valeurs, horizons 1→5 ans)
-#   - Les 4 features cliniques encodées
-# → vecteur de 9 dimensions passé à un XGBClassifier.
+#   - The AsymMirai risk vector (5 values, horizons 1→5 years)
+#   - The 4 encoded clinical features
+# → 9-dimensional vector passed to an XGBClassifier.
 #
-# __init__   : charge le méta-modèle sérialisé si disponible
-# train()    : entraîne XGBoost sur des données labellisées (event_5y)
-# predict_risk() : retourne le score final + le niveau de risque catégoriel
-#   Mode XGBoost  : predict_proba()[1] (probabilité de la classe positive)
-#   Mode heuristique : moyenne pondérée score_img (50%) + score_cli (50%)
+# __init__   : loads the serialized meta-model if available
+# train()    : trains XGBoost on labeled data (event_5y)
+# predict_risk() : returns the final score + the categorical risk level
+#   XGBoost mode  : predict_proba()[1] (probability of the positive class)
+#   Heuristic mode : weighted average score_img (50%) + score_cli (50%)
 class EnsembleModel:
 
     def __init__(self, model_path=None):
@@ -376,7 +376,7 @@ class EnsembleModel:
         self.is_trained = True
         with open(save_path, 'wb') as f:
             pickle.dump(self.xgb_model, f)
-        print(f'XGBoost sauvegarde : {save_path}')
+        print(f'XGBoost saved : {save_path}')
 
     def predict_risk(self, risk_vector, clinical_vector):
         mirai_feats = risk_vector[:5] if len(risk_vector) >= 5 else \
@@ -422,18 +422,18 @@ print('Bloc 1 pret (mode', 'XGBoost' if ensemble.is_trained else 'heuristique fa
 
 # %% cellule 10
 # ═══════════════════════════════════════════════════════════════════════════
-# CELLULE DIAGNOSTIC MINIMAL — Vérification rapide de la sortie du modèle
+# MINIMAL DIAGNOSTIC CELL — Quick check of the model output
 #
-# But : s'assurer que asym_model(t, t, t, t) renvoie bien un tuple
+# Goal: make sure asym_model(t, t, t, t) does return a tuple
 #         (output_tensor, list_of_dicts_with_heatmap).
-# On utilise 4 images identiques (dummy noir 256×256) car le modèle attend
-# exactement 4 tenseurs en entrée (L-CC, R-CC, L-MLO, R-MLO).
-# L'output est un tenseur [1, 2] (logits pour 2 classes) ; 'other' est une
-# liste de 2 dicts contenant chacun une heatmap 8×8 et les argmins.
-# À exécuter une seule fois pour valider l'architecture avant l'interface.
+# We use 4 identical images (black dummy 256×256) because the model expects
+# exactly 4 input tensors (L-CC, R-CC, L-MLO, R-MLO).
+# The output is a tensor [1, 2] (logits for 2 classes); 'other' is a
+# list of 2 dicts each containing an 8×8 heatmap and the argmins.
+# Run only once to validate the architecture before the interface.
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Cellule diagnostic — à exécuter UNE FOIS avant l'interface
+# Diagnostic cell — run ONCE before the interface
 dummy = Image.new('RGB', (256, 256))
 transform = transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])
 t = transform(dummy).unsqueeze(0).to(device)
@@ -456,16 +456,16 @@ if isinstance(other, (list, tuple)):
         print(f"\n  other[{i}] type : {type(o)}")
         if isinstance(o, dict):
             for k, v in o.items():
-                print(f"    '{k}' → type={type(v)}, valeur={v}")
+                print(f"    '{k}' → type={type(v)}, value={v}")
 
 # %% [markdown] cellule 11
 # ## 🖥️ Cellule 5 — Bloc 2 : Interface Gradio Multimodale
-# Lance l'interface interactive. Utiliser le **lien public `.gradio.live`** généré dans l'output.
+# Launches the interactive interface. Use the **public `.gradio.live` link** generated in the output.
 # 
-# **Fonctionnalités :**
-# - Upload des 4 vues mammographiques (L-CC, R-CC, L-MLO, R-MLO)
-# - Saisie des données cliniques (âge, IMC, antécédents, densité BI-RADS)
-# - Rapport de risque combiné + heatmaps d'asymétrie superposées
+# **Features:**
+# - Upload of the 4 mammographic views (L-CC, R-CC, L-MLO, R-MLO)
+# - Entry of the clinical data (age, BMI, history, BI-RADS density)
+# - Combined risk report + overlaid asymmetry heatmaps
 
 # %% cellule 12
 # ═══════════════════════════════════════════════
@@ -477,12 +477,12 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 from PIL import Image
 
-# OBJECTIF : valider que le modèle produit des scores variés sur des inputs
-# différents (sinon, le modèle serait dégénéré et retournerait toujours la
-# même valeur indépendamment des images).
+# GOAL: validate that the model produces varied scores on different inputs
+# (otherwise the model would be degenerate and always return the
+# same value regardless of the images).
 #
-# On redéfinit ici preprocess_rsna localement (duplication volontaire) pour
-# éviter toute dépendance à la cellule 4 lors de l'exécution isolée.
+# preprocess_rsna is redefined here locally (deliberate duplication) to
+# avoid any dependency on cell 4 when run in isolation.
 
 def preprocess_rsna(img, flip=False):
     if flip:
@@ -503,12 +503,12 @@ def preprocess_rsna(img, flip=False):
     ])
     return t(img_rgb).unsqueeze(0).to(device)
 
-# ── Stratégie des 5 tests ─────────────────────────────────────────────────
-# Test 1 : images uniformes noires  → heatmap attendue plate → score bas
-# Test 2 : images uniformes blanches → même résultat que noir (pas d'asymétrie)
-# Test 3 : bruit aléatoire           → doit produire un score différent de 1 et 2
-# Test 4 : inspection de 'other'     → vérifie structure heatmap 8×8
-# Test 5 : variance sur 5 runs       → le modèle est sensible aux inputs
+# ── Strategy of the 5 tests ───────────────────────────────────────────────
+# Test 1: uniform black images  → flat heatmap expected → low score
+# Test 2: uniform white images  → same result as black (no asymmetry)
+# Test 3: random noise          → must produce a score different from 1 and 2
+# Test 4: inspection of 'other' → checks the 8×8 heatmap structure
+# Test 5: variance over 5 runs → the model is sensitive to inputs
 # ──────────────────────────────────────────────────────────────────────────
 # ── Test 1 : 4 images IDENTIQUES (dummy test) ──
 print("=" * 50)
@@ -531,7 +531,7 @@ probs2 = F.softmax(out2, dim=1)[0].cpu().numpy()
 print(f"  probs : {np.round(probs2, 6)}")
 print(f"  output brut : {out2.cpu().numpy()}")
 
-# ── Test 3 : images aléatoires (bruit) ──
+# ── Test 3: random images (noise) ──
 print("\nTEST 3 : images bruit aleatoire")
 import torchvision.transforms.functional as TF
 rand1 = torch.randn(1, 3, 256, 256).to(device)
@@ -553,12 +553,12 @@ for i, o in enumerate(other3):
     if isinstance(o, dict):
         for k, v in o.items():
             if isinstance(v, torch.Tensor):
-                print(f"    '{k}' → shape={v.shape}, valeur={v.cpu().tolist()}")
+                print(f"    '{k}' → shape={v.shape}, value={v.cpu().tolist()}")
             else:
                 print(f"    '{k}' → {v}")
 
-# ── Test 5 : variance sur 5 runs bruit different ──
-print("\nTEST 5 : variance sur 5 inputs aleatoires differents")
+# ── Test 5: variance over 5 runs of different noise ──
+print("\nTEST 5 : variance over 5 different random inputs")
 scores = []
 for i in range(5):
     r1 = torch.randn(1, 3, 256, 256).to(device)
@@ -575,39 +575,39 @@ print(f"  Min={min(scores):.4f}  Max={max(scores):.4f}  Range={max(scores)-min(s
 
 # %% cellule 13
 # ═══════════════════════════════════════════════════════════════════════════
-# CELLULE DIAGNOSTIC POIDS — Inspection du fichier asymmirai_weights.pth
+# WEIGHTS DIAGNOSTIC CELL — Inspection of the asymmirai_weights.pth file
 #
-# But : vérifier que le fichier de poids est valide et comprendre sa structure
+# Goal: check that the weights file is valid and understand its structure
 # avant de l'utiliser. Deux cas de figure possibles :
-#   Cas 1 : checkpoint est un dict avec une clé 'state_dict'
+#   Case 1: checkpoint is a dict with a 'state_dict' key
 #           → format standard PyTorch Lightning / torch.save(state_dict)
-#   Cas 2 : checkpoint est directement l'objet modèle complet
-#           → torch.load() retourne une instance de LocalizedDifModel
-#             avec sa méthode .state_dict() accessible directement
-# On affiche les 5 premières et dernières couches pour vérifier l'architecture
-# (backbone ResNet + tête de localisation différentielle).
+#   Case 2: checkpoint is directly the complete model object
+#           → torch.load() returns an instance of LocalizedDifModel
+#             with its .state_dict() method directly accessible
+# We display the first and last 5 layers to check the architecture
+# (ResNet backbone + differential localization head).
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Cellule diagnostic poids
+# Weights diagnostic cell
 import torch
 import os
 
 weights_path = '/content/snapshots/asymmirai_weights.pth'
-print("Taille du fichier :", os.path.getsize(weights_path) / 1e6, "MB")
+print("File size:", os.path.getsize(weights_path) / 1e6, "MB")
 
 checkpoint = torch.load(weights_path, map_location='cpu', weights_only=False)
 print("Type :", type(checkpoint))
 
 if isinstance(checkpoint, dict):
-    print("Clés disponibles :", list(checkpoint.keys())[:10])
+    print("Available keys:", list(checkpoint.keys())[:10])
     if 'state_dict' in checkpoint:
         keys = list(checkpoint['state_dict'].keys())
-        print("Nb paramètres :", len(keys))
+        print("Number of parameters:", len(keys))
         print("Premiers :", keys[:5])
         print("Derniers :", keys[-5:])
 elif hasattr(checkpoint, 'state_dict'):
     keys = list(checkpoint.state_dict().keys())
-    print("Nb paramètres :", len(keys))
+    print("Number of parameters:", len(keys))
     print("Premiers :", keys[:5])
     print("Derniers :", keys[-5:])
 
@@ -622,16 +622,16 @@ import io
 
 
 # ── generate_risk_chart ────────────────────────────────────────────────────
-# Génère un graphique matplotlib à 2 panneaux (fond sombre style dashboard) :
-#   Panneau gauche  : barplot du risque AsymMirai pour chaque année (1→5 ans)
-#                     Couleur rouge si risque > 35%, orange si > 20%, vert sinon
-#   Panneau droit   : contribution imagerie vs clinique + score final
-#                     Lignes horizontales pointillées = seuils cliniques
-# Le résultat est rendu en PIL.Image via un buffer BytesIO (pas de fichier disque).
+# Generates a 2-panel matplotlib chart (dark dashboard-style background):
+#   Left panel  : barplot of the AsymMirai risk for each year (1→5 years)
+#                 Red if risk > 35%, orange if > 20%, green otherwise
+#   Right panel : imaging vs clinical contribution + final score
+#                 Dotted horizontal lines = clinical thresholds
+# The result is rendered as a PIL.Image through a BytesIO buffer (no file on disk).
 def generate_risk_chart(risk_vector, score_final, score_imagerie, score_clinique):
     fig, axes = plt.subplots(1, 2, figsize=(12, 4), facecolor='#1a1a2e')
 
-    # ── Graphique 1 : risque par année ──
+    # ── Chart 1: risk per year ──
     ax1 = axes[0]
     ax1.set_facecolor('#16213e')
     annees  = [f'An {i+1}' for i in range(len(risk_vector[:5]))]
@@ -647,7 +647,7 @@ def generate_risk_chart(risk_vector, score_final, score_imagerie, score_clinique
         ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1,
                  f'{val:.1f}%', ha='center', va='bottom', color='white', fontsize=9)
 
-    # ── Graphique 2 : contributions imagerie vs clinique ──
+    # ── Chart 2: imaging vs clinical contributions ──
     ax2 = axes[1]
     ax2.set_facecolor('#16213e')
     categories = ['Score\nImagerie', 'Score\nClinique', 'Score\nFinal']
@@ -681,12 +681,12 @@ def generate_risk_chart(risk_vector, score_final, score_imagerie, score_clinique
 
 
 # ── generate_asymmetry_heatmap ─────────────────────────────────────────────
-# Superpose la heatmap 8×8 du modèle sur l'image mammographique originale :
-#  1. Normalisation min-max de la heatmap brute dans [0, 1]
-#  2. Upscaling bilinéaire 8×8 → taille originale de l'image
-#  3. Application de la colormap 'jet' (bleu=faible, rouge=fort)
-#  4. Canal alpha à 60% pour rendre la superposition semi-transparente
-#  5. alpha_composite() pour fusionner mammographie (RGBA) + heatmap (RGBA)
+# Overlays the model's 8×8 heatmap on the original mammographic image:
+#  1. Min-max normalization of the raw heatmap into [0, 1]
+#  2. Bilinear upscaling 8×8 → original image size
+#  3. Applying the 'jet' colormap (blue=low, red=high)
+#  4. Alpha channel at 60% to make the overlay semi-transparent
+#  5. alpha_composite() to merge mammogram (RGBA) + heatmap (RGBA)
 def generate_asymmetry_heatmap(img, heatmap_8x8):
     W, H = img.size
 
@@ -714,13 +714,13 @@ def generate_asymmetry_heatmap(img, heatmap_8x8):
 
 
 # ── analyze_multimodal ─────────────────────────────────────────────────────
-# Fonction principale appelée par le bouton Gradio. Orchestre :
-#  1. Vérification des prérequis (modèle chargé + 4 images fournies)
-#  2. get_asymmirai_risk_vector() : inférence modèle → vecteur risque + meta heatmaps
-#  3. encode_clinical_features()  : normalisation des données patient
-#  4. ensemble.predict_risk()     : fusion imagerie + clinique → score final
-#  5. Génération du rapport textuel formaté (ASCII) + graphique + heatmaps
-# Les 4 outputs correspondent aux 4 composants Gradio de la cellule.
+# Main function called by the Gradio button. Orchestrates:
+#  1. Checking the prerequisites (model loaded + 4 images provided)
+#  2. get_asymmirai_risk_vector(): model inference → risk vector + meta heatmaps
+#  3. encode_clinical_features()  : normalization of the patient data
+#  4. ensemble.predict_risk()     : imaging + clinical fusion → final score
+#  5. Generation of the formatted text report (ASCII) + chart + heatmaps
+# The 4 outputs correspond to the 4 Gradio components of the cell.
 def analyze_multimodal(img_lcc, img_rcc, img_lmlo, img_rmlo,
                         age, imc, antecedents, densite_birads):
     if asym_model is None:
@@ -799,10 +799,10 @@ def analyze_multimodal(img_lcc, img_rcc, img_lmlo, img_rmlo,
 
 
 # ── Construction de l'interface Gradio ─────────────────────────────────────
-# gr.Blocks + thème Soft : deux onglets (images / clinique) pour structurer
-# les inputs sans surcharger l'interface.
-# analyze_btn.click() câble le bouton aux 4 inputs et 4 outputs définis.
-# interface.launch(share=True) génère un lien public .gradio.live (1 semaine).
+# gr.Blocks + Soft theme: two tabs (images / clinical) to structure
+# the inputs without overloading the interface.
+# analyze_btn.click() wires the button to the 4 inputs and 4 outputs defined.
+# interface.launch(share=True) generates a public .gradio.live link (1 week).
 # ── Interface Gradio ──
 with gr.Blocks(title='AsymMirai Multimodal', theme=gr.themes.Soft()) as interface:
 
@@ -847,8 +847,8 @@ with gr.Blocks(title='AsymMirai Multimodal', theme=gr.themes.Soft()) as interfac
 interface.launch(debug=True, share=True)
 
 # %% [markdown] cellule 15
-# ## 📊 Cellule 6 — Bloc 3 : Batch Testing sur Cohorte
-# **Structure attendue du dossier :**
+# ## 📊 Cell 6 — Block 3: Batch Testing on a Cohort
+# **Expected folder structure:**
 # ```
 # /content/cohort/
 # ├── clinical_data.csv          ← patient_id, age, imc, antecedents, densite_birads, event_5y, time_to_event
@@ -857,26 +857,26 @@ interface.launch(debug=True, share=True)
 #     │   ├── LCC.png  ├── RCC.png  ├── LMLO.png  └── RMLO.png
 #     └── patient_002/ ...
 # ```
-# La cellule inclut également un **générateur de cohorte synthétique** pour tester sans données réelles.
+# The cell also includes a **synthetic cohort generator** to test without real data.
 
 # %% cellule 16
 # ═══════════════════════════════════════════════════════════════════════════
-# CELLULE 6 — BLOC 3 : TEST PAR COHORTE (BATCH TESTING)
+# CELL 6 — BLOCK 3: COHORT TESTING (BATCH TESTING)
 #
-# Parcourt un dossier de patientes, génère toutes les prédictions d'un coup
-# et sauvegarde les résultats en CSV + JSON horodatés.
+# Walks through a folder of patients, generates all the predictions at once
+# and saves the results as timestamped CSV + JSON.
 #
-# Inclut generate_synthetic_cohort() pour tester le pipeline sans données réelles.
+# Includes generate_synthetic_cohort() to test the pipeline without real data.
 # ═══════════════════════════════════════════════════════════════════════════
 
 
 # ── generate_synthetic_cohort ──────────────────────────────────────────────
-# Génère une cohorte fictive reproductible (seed fixe) pour valider le
-# pipeline batch SANS données réelles. Structure créée :
+# Generates a reproducible fictitious cohort (fixed seed) to validate the
+# batch pipeline WITHOUT real data. Structure created:
 #   /content/cohort/images/patient_NNN/{LCC,RCC,LMLO,RMLO}.png  (bruit gaussien)
 #   /content/cohort/clinical_data.csv  (age, imc, antecedents, birads, event_5y)
-# Distributions simulées réalistes : âge N(52,10), IMC N(25,4),
-# 15% antécédents familiaux, ~12% d'incidence cancer à 5 ans.
+# Realistic simulated distributions: age N(52,10), BMI N(25,4),
+# 15% family history, ~12% 5-year cancer incidence.
 def generate_synthetic_cohort(output_dir: str = '/content/cohort',
                                n_patients: int = 20, seed: int = 42):
     """
@@ -900,15 +900,15 @@ def generate_synthetic_cohort(output_dir: str = '/content/cohort',
         pid_dir = images_dir / pid
         pid_dir.mkdir(exist_ok=True)
 
-        # Images grises avec bruit gaussien (simule une mammographie)
+        # Gray images with Gaussian noise (simulates a mammogram)
         for view in ['LCC', 'RCC', 'LMLO', 'RMLO']:
             noise = np.random.randint(50, 200, (256, 256, 3), dtype=np.uint8)
             Image.fromarray(noise).save(pid_dir / f'{view}.png')
 
-        # Données cliniques simulées avec distributions réalistes
+        # Simulated clinical data with realistic distributions
         age   = int(np.clip(np.random.normal(52, 10), 20, 85))
         imc   = round(float(np.clip(np.random.normal(25, 4), 16, 45)), 1)
-        atcd  = int(random.random() < 0.15)   # 15% de prévalence
+        atcd  = int(random.random() < 0.15)   # 15% prevalence
         den   = random.choice(['A', 'B', 'B', 'C', 'C', 'D'])
         t_ev  = round(float(np.random.uniform(0.5, 5.0)), 2)
         ev    = int(t_ev < 5.0 and random.random() < 0.12)  # ~12% d'incidence
@@ -921,19 +921,19 @@ def generate_synthetic_cohort(output_dir: str = '/content/cohort',
 
     df = pd.DataFrame(rows)
     df.to_csv(Path(output_dir) / 'clinical_data.csv', index=False)
-    print(f'✅ Cohorte synthétique : {n_patients} patientes → {output_dir}')
-    print(f'   Taux d\'événements : {df["event_5y"].mean():.1%}')
+    print(f'✅ Synthetic cohort : {n_patients} patients → {output_dir}')
+    print(f'   Event rate : {df["event_5y"].mean():.1%}')
     return df
 
 
 
 # ── run_cohort_batch ───────────────────────────────────────────────────────
-# Itère sur toutes les patientes du dossier et applique le pipeline complet :
-#   Pour chaque patiente : chargement des 4 vues → inférence AsymMirai
-#                          → encodage clinique → predict_risk() → stockage
-# Robustesse : capture des exceptions par patiente (pas d'arrêt global)
-# et sauvegarde partielle toutes les 10 patientes (évite la perte sur crash).
-# Sortie : CSV + JSON horodatés dans output_dir pour traçabilité.
+# Iterates over all the patients of the folder and applies the full pipeline:
+#   For each patient: loading the 4 views → AsymMirai inference
+#                     → clinical encoding → predict_risk() → storage
+# Robustness: exceptions caught per patient (no global stop)
+# and partial save every 10 patients (avoids loss on crash).
+# Output: timestamped CSV + JSON in output_dir for traceability.
 def run_cohort_batch(cohort_dir:       str,
                      asym_model,
                      ensemble:         EnsembleModel,
@@ -975,7 +975,7 @@ def run_cohort_batch(cohort_dir:       str,
     print(f'\n{"="*60}')
     print(f'  BATCH TEST — COHORTE AsymMirai Multimodal')
     print(f'  👥 Patientes  : {len(df_clinical)} | 🖥️  Device : {dev}')
-    print(f'  🕐 Début      : {datetime.now().strftime("%H:%M:%S")}')
+    print(f'  🕐 Start      : {datetime.now().strftime("%H:%M:%S")}')
     print(f'{"="*60}\n')
 
     results = []
@@ -989,7 +989,7 @@ def run_cohort_batch(cohort_dir:       str,
             'time_to_event': float(row.get('time_to_event', 5.0)),
         }
 
-        # Chargement des 4 vues de la patiente
+        # Loading the 4 views of the patient
         pid_dir = cohort_path / images_subdir / patient_id
         views   = {}
         for v in ['LCC', 'RCC', 'LMLO', 'RMLO']:
@@ -1007,17 +1007,17 @@ def run_cohort_batch(cohort_dir:       str,
             continue
 
         try:
-            # Inférence AsymMirai
+            # AsymMirai inference
             rv, meta = get_asymmirai_risk_vector(
                 asym_model,
                 views['LCC'], views['RCC'], views['LMLO'], views['RMLO'], dev
             )
-            # Encodage clinique
+            # Clinical encoding
             clin = encode_clinical_features(
                 float(row['age']), float(row['imc']),
                 bool(int(row['antecedents'])), str(row['densite_birads'])
             )
-            # Prédiction fusionnée
+            # Fused prediction
             res = ensemble.predict_risk(rv, clin)
 
             results.append({
@@ -1037,7 +1037,7 @@ def run_cohort_batch(cohort_dir:       str,
                             'score_ensemble': np.nan,
                             **{f'score_y{k}': np.nan for k in range(1, 6)}})
 
-        # Sauvegarde intermédiaire toutes les 10 patientes
+        # Intermediate save every 10 patients
         if len(results) % 10 == 0:
             pd.DataFrame(results).to_csv(f'{output_dir}/resultats_partiels.csv', index=False)
 
@@ -1047,19 +1047,19 @@ def run_cohort_batch(cohort_dir:       str,
     df_res.to_json(f'{output_dir}/predictions_{ts}.json', orient='records', indent=2)
 
     n_ok  = (df_res['status'] == 'OK').sum()
-    print(f'\n✅ Batch terminé — {n_ok}/{len(df_res)} succès')
-    print(f'📄 Résultats → {output_dir}/predictions_{ts}.csv')
+    print(f'\n✅ Batch finished — {n_ok}/{len(df_res)} successes')
+    print(f'📄 Results → {output_dir}/predictions_{ts}.csv')
     return df_res
 
 
-# ── EXÉCUTION : générer une cohorte synthétique et lancer le batch ──
-# Pour utiliser vos vraies données, remplacez cohort_dir par votre dossier.
+# ── EXECUTION: generate a synthetic cohort and run the batch ──
+# To use your real data, replace cohort_dir with your folder.
 
-# ── EXÉCUTION ──────────────────────────────────────────────────────────────
-# Étape 1 : génération de 20 patientes synthétiques
-# Étape 2 : batch testing complet sur ces 20 patientes
-# Pour utiliser vos vraies données, remplacez cohort_dir = '/votre/dossier/'
-# et décommentez max_patients pour limiter le traitement (test partiel).
+# ── EXECUTION ──────────────────────────────────────────────────────────────
+# Step 1: generation of 20 synthetic patients
+# Step 2: full batch testing on these 20 patients
+# To use your real data, replace cohort_dir = '/your/folder/'
+# and uncomment max_patients to limit the processing (partial test).
 generate_synthetic_cohort('/content/cohort', n_patients=20)
 
 df_resultats = run_cohort_batch(
@@ -1067,44 +1067,44 @@ df_resultats = run_cohort_batch(
     asym_model  = asym_model,
     ensemble    = ensemble,
     output_dir  = '/content/cohort_results',
-    # max_patients = 100   # décommentez pour limiter
+    # max_patients = 100   # uncomment to limit
 )
 
-print(f'\n📋 Aperçu des résultats :')
+print(f'\n📋 Preview of the results :')
 df_resultats[['patient_id', 'event_5y', 'time_to_event',
                'score_y1', 'score_y5', 'score_ensemble', 'niveau_risque']].head(10)
 
 # %% [markdown] cellule 17
-# ## 📈 Cellule 7 — Bloc 4 : Métriques de Survie Cliniques
-# **Pourquoi pas l'Accuracy ?** Elle ignore le temps jusqu'à l'événement et traite les patientes censurées incorrectement.
+# ## 📈 Cell 7 — Block 4: Clinical Survival Metrics
+# **Why not Accuracy?** It ignores the time to event and treats censored patients incorrectly.
 # 
-# | Métrique | Librairie | Rôle |
+# | Metric | Library | Role |
 # |---|---|---|
-# | **C-Index** | `lifelines` | Discrimination temporelle (analogue AUC pour données de survie) |
-# | **AUC-ROC à 1, 3, 5 ans** | `scikit-survival` | Discriminer cas/contrôles à chaque horizon |
-# | **Brier Score** | `sklearn` | Calibration des probabilités prédites |
+# | **C-Index** | `lifelines` | Temporal discrimination (AUC analogue for survival data) |
+# | **AUC-ROC at 1, 3, 5 years** | `scikit-survival` | Discriminate cases/controls at each horizon |
+# | **Brier Score** | `sklearn` | Calibration of the predicted probabilities |
 
 # %% cellule 18
 # ═══════════════════════════════════════════════════════════════════════════
-# CELLULE 7 — BLOC 4 : MÉTRIQUES D'ÉVALUATION CLINIQUE DE SURVIE
+# CELL 7 — BLOCK 4: CLINICAL SURVIVAL EVALUATION METRICS
 #
-# Évaluation par métriques adaptées aux données de survie :
+# Evaluation with metrics suited to survival data:
 #   → C-Index de Harrell  (lifelines)       — discrimination temporelle
-#   → AUC-ROC temporelle  (scikit-survival) — AUC par horizon (1, 3, 5 ans)
-#   → Brier Score         (sklearn)         — calibration des probabilités
+#   → Time-dependent AUC-ROC  (scikit-survival) — AUC per horizon (1, 3, 5 years)
+#   → Brier Score             (sklearn)         — calibration of the probabilities
 #   → Visualisations      (matplotlib)      — distributions + courbes ROC
 #
-# IMPORTANT : L'Accuracy standard est INAPPROPRIÉE pour les modèles de survie
-# car elle ignore les données censurées (patientes perdues de vue avant 5 ans).
+# IMPORTANT: Standard Accuracy is INAPPROPRIATE for survival models
+# because it ignores censored data (patients lost to follow-up before 5 years).
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Imports optionnels (avec gestion des cas d'absence)
+# Optional imports (with handling of missing packages)
 try:
     from lifelines.utils import concordance_index
     LIFELINES_OK = True
 except ImportError:
     LIFELINES_OK = False
-    print('⚠️ lifelines absent → installez avec : !pip install lifelines -q')
+    print('⚠️ lifelines missing → install with : !pip install lifelines -q')
 
 try:
     from sksurv.metrics import cumulative_dynamic_auc
@@ -1112,16 +1112,16 @@ try:
     SKSURV_OK = True
 except ImportError:
     SKSURV_OK = False
-    print('ℹ️ scikit-survival absent → AUC naïve sklearn utilisée en fallback')
+    print('ℹ️ scikit-survival missing → naive sklearn AUC used as fallback')
 
 
 # ── compute_cindex ─────────────────────────────────────────────────────────
-# Le C-Index de Harrell mesure la discrimination temporelle du modèle :
-#   Pour toutes les paires (i,j) avec event(i)=1 et time(i)<time(j),
-#   le modèle est correct si score(i) > score(j).
-# On inverse le score (-score) car la convention lifelines veut que
-# un score élevé → survie longue, alors qu'ici un score élevé → risque élevé.
-# Référence : 0.5=aléatoire, 0.7=acceptable, 0.8=bon, >0.85=excellent
+# Harrell's C-Index measures the temporal discrimination of the model:
+#   For all pairs (i,j) with event(i)=1 and time(i)<time(j),
+#   the model is correct if score(i) > score(j).
+# We invert the score (-score) because the lifelines convention expects
+# a high score → long survival, whereas here a high score → high risk.
+# Reference: 0.5=random, 0.7=acceptable, 0.8=good, >0.85=excellent
 def compute_cindex(df: pd.DataFrame,
                    score_col: str = 'score_ensemble',
                    time_col:  str = 'time_to_event',
@@ -1141,23 +1141,23 @@ def compute_cindex(df: pd.DataFrame,
     try:
         ci = concordance_index(
             df_c[time_col].values,
-            -df_c[score_col].values,       # inversé : score élevé → événement précoce
+            -df_c[score_col].values,       # inverted: high score → early event
             df_c[event_col].values.astype(int)
         )
         print(f'  🎯 C-Index (Harrell) : {ci:.4f}')
         return {'c_index': round(ci, 4)}
     except Exception as e:
-        print(f'  ⚠️ Erreur C-Index : {e}')
+        print(f'  ⚠️ C-Index error : {e}')
         return {'c_index': np.nan}
 
 
 
 # ── compute_temporal_auc ───────────────────────────────────────────────────
-# Calcule l'AUC-ROC pour chaque horizon temporel (1, 3, 5 ans).
-# La difficulté avec les données de survie : les patientes censurées avant
-# l'horizon t sont d'état inconnu → on les exclut plutôt que de les étiqueter.
-# Méthode 1 (sksurv) : cumulative_dynamic_AUC, rigoureuse pour données censurées
-# Méthode 2 (sklearn) : AUC naïve sur sous-ensemble cas/contrôles clairement définis
+# Computes the AUC-ROC for each time horizon (1, 3, 5 years).
+# The difficulty with survival data: patients censored before
+# horizon t have an unknown status → we exclude them rather than label them.
+# Method 1 (sksurv): cumulative_dynamic_AUC, rigorous for censored data
+# Method 2 (sklearn): naive AUC on a subset of clearly defined cases/controls
 def compute_temporal_auc(df: pd.DataFrame,
                           time_col:  str  = 'time_to_event',
                           event_col: str  = 'event_5y',
@@ -1192,10 +1192,10 @@ def compute_temporal_auc(df: pd.DataFrame,
                 auc_arr, _ = cumulative_dynamic_auc(
                     y_s, y_s,
                     df_c[col].values.astype(float),
-                    np.array([t - 0.001])   # horizon légèrement avant t
+                    np.array([t - 0.001])   # horizon slightly before t
                 )
                 results[f'auc_{t}y'] = round(float(auc_arr[0]), 4)
-                print(f'  📊 AUC à {t} an(s) [sksurv] : {auc_arr[0]:.4f}')
+                print(f'  📊 AUC at {t} year(s) [sksurv] : {auc_arr[0]:.4f}')
                 continue
             except Exception as e:
                 print(f'  ⚠️ sksurv {t}y : {e} → repli sklearn')
@@ -1209,24 +1209,24 @@ def compute_temporal_auc(df: pd.DataFrame,
 
         if df_sub['_lbl'].nunique() < 2 or len(df_sub) < 5:
             results[f'auc_{t}y'] = np.nan
-            print(f'  ⚠️ AUC {t}y : données insuffisantes')
+            print(f'  ⚠️ AUC {t}y : insufficient data')
             continue
 
         auc = roc_auc_score(df_sub['_lbl'], df_sub[col])
         results[f'auc_{t}y'] = round(auc, 4)
-        print(f'  📊 AUC à {t} an(s) [sklearn naïf] : {auc:.4f}')
+        print(f'  📊 AUC at {t} year(s) [naive sklearn] : {auc:.4f}')
 
     return results
 
 
 
 # ── generate_evaluation_report ─────────────────────────────────────────────
-# Rapport d'évaluation complet qui orchestre :
-#   C-Index, AUC@1/3/5 ans, Brier Score, stats descriptives
+# Complete evaluation report which orchestrates:
+#   C-Index, AUC@1/3/5 years, Brier Score, descriptive stats
 # + 2 figures matplotlib :
-#   Figure 1 : histogramme + boxplot des scores (cas vs contrôles)
-#   Figure 2 : courbes ROC aux 3 horizons avec baseline aléatoire
-# Tout est sauvegardé en JSON horodaté pour reproductibilité des expériences.
+#   Figure 1: histogram + boxplot of the scores (cases vs controls)
+#   Figure 2: ROC curves at the 3 horizons with random baseline
+# Everything is saved as timestamped JSON for experiment reproducibility.
 def generate_evaluation_report(df_results: pd.DataFrame,
                                  output_dir: str  = '/content/cohort_results',
                                  plot:       bool = True) -> dict:
@@ -1245,20 +1245,20 @@ def generate_evaluation_report(df_results: pd.DataFrame,
     """
     os.makedirs(output_dir, exist_ok=True)
 
-    # Filtrage sur les prédictions valides uniquement
+    # Filtering on valid predictions only
     df_v    = df_results[df_results['status'] == 'OK'].copy()
     n_total = len(df_results)
     n_valid = len(df_v)
     n_ev    = int(df_v['event_5y'].sum()) if 'event_5y' in df_v.columns else 0
 
     print(f'\n{"="*60}')
-    print(f'  RAPPORT D\'ÉVALUATION CLINIQUE')
+    print(f'  CLINICAL EVALUATION REPORT')
     print(f'{"="*60}')
-    print(f'  Patientes analysées : {n_valid}/{n_total}')
-    print(f'  Événements (cancer) : {n_ev} ({n_ev/max(n_valid,1):.1%})')
+    print(f'  Patients analyzed : {n_valid}/{n_total}')
+    print(f'  Events (cancer) : {n_ev} ({n_ev/max(n_valid,1):.1%})')
 
     if n_valid < 5:
-        print('  ⚠️ Trop peu de données valides pour l\'évaluation.')
+        print('  ⚠️ Too little valid data for the evaluation.')
         return {}
 
     report = {'n_total': n_total, 'n_valid': n_valid, 'n_events': n_ev,
@@ -1278,10 +1278,10 @@ def generate_evaluation_report(df_results: pd.DataFrame,
     if len(df_c) >= 5:
         bs = brier_score_loss(df_c['event_5y'].astype(int), df_c['score_ensemble'])
         report['brier_score'] = round(bs, 4)
-        print(f'  📐 Brier Score : {bs:.4f}  (0=parfait, 0.25=aléatoire)')
+        print(f'  📐 Brier Score : {bs:.4f}  (0=perfect, 0.25=random)')
 
-    # ── Statistiques descriptives des scores ──
-    print('\n─── Statistiques des Scores Ensemble ───')
+    # ── Descriptive statistics of the scores ──
+    print('\n─── Ensemble Score Statistics ───')
     sc = df_v['score_ensemble'].dropna()
     stats = {'score_mean': round(float(sc.mean()), 4),
               'score_std':  round(float(sc.std()),  4),
@@ -1291,9 +1291,9 @@ def generate_evaluation_report(df_results: pd.DataFrame,
     for k, v in stats.items():
         print(f'  {k}: {v}')
 
-    # ── Synthèse finale ──
+    # ── Final summary ──
     print(f'\n{"="*60}')
-    print(f'  SYNTHÈSE DES MÉTRIQUES')
+    print(f'  METRICS SUMMARY')
     print(f'{"="*60}')
     for k, label in [('c_index','C-Index'), ('auc_1y','AUC à 1 an'),
                       ('auc_3y','AUC à 3 ans'), ('auc_5y','AUC à 5 ans'),
@@ -1305,7 +1305,7 @@ def generate_evaluation_report(df_results: pd.DataFrame,
     # ── Visualisations ──
     if plot and n_valid >= 10:
 
-        # Figure 1 : Distribution des scores + boxplot
+        # Figure 1: Score distribution + boxplot
         fig, axes = plt.subplots(1, 2, figsize=(14, 5))
         fig.suptitle('Distribution des Scores de Risque — AsymMirai Multimodal',
                      fontsize=13, fontweight='bold')
@@ -1334,7 +1334,7 @@ def generate_evaluation_report(df_results: pd.DataFrame,
         plt.tight_layout()
         plt.savefig(f'{output_dir}/score_distribution.png', dpi=120, bbox_inches='tight')
         plt.show()
-        print(f'  📊 Figure sauvegardée → {output_dir}/score_distribution.png')
+        print(f'  📊 Figure saved → {output_dir}/score_distribution.png')
 
         # Figure 2 : Courbes ROC aux 3 horizons temporels
         fig, ax = plt.subplots(1, 1, figsize=(7, 6))
@@ -1365,21 +1365,21 @@ def generate_evaluation_report(df_results: pd.DataFrame,
         plt.tight_layout()
         plt.savefig(f'{output_dir}/roc_curves.png', dpi=120, bbox_inches='tight')
         plt.show()
-        print(f'  📊 Figure sauvegardée → {output_dir}/roc_curves.png')
+        print(f'  📊 Figure saved → {output_dir}/roc_curves.png')
 
-    # ── Sauvegarde du rapport JSON ──
+    # ── Saving the JSON report ──
     ts = datetime.now().strftime('%Y%m%d_%H%M%S')
     report_path = f'{output_dir}/rapport_evaluation_{ts}.json'
     with open(report_path, 'w') as f:
         json.dump(report, f, indent=2, default=str)
-    print(f'\n  📄 Rapport JSON sauvegardé → {report_path}')
+    print(f'\n  📄 JSON report saved → {report_path}')
 
     return report
 
 
-# ── EXÉCUTION : évaluation sur les résultats du Bloc 3 ──
-# df_resultats doit avoir été généré en cellule 6.
-# Si vous évaluez sur données synthétiques, les métriques sont indicatives seulement.
+# ── EXECUTION: evaluation on the Block 3 results ──
+# df_resultats must have been generated in cell 6.
+# If you evaluate on synthetic data, the metrics are indicative only.
 
 rapport_eval = generate_evaluation_report(
     df_resultats,
@@ -1387,44 +1387,44 @@ rapport_eval = generate_evaluation_report(
     plot       = True
 )
 
-print('\n✅ Évaluation terminée — consultez /content/cohort_results/ pour les fichiers générés.')
+print('\n✅ Evaluation finished — see /content/cohort_results/ for the generated files.')
 
 # %% cellule 19
 # ═══════════════════════════════════════════════════════════════════════════
-# CELLULE 8 — SAUVEGARDE SUR GOOGLE DRIVE
+# CELL 8 — SAVING TO GOOGLE DRIVE
 #
-# But : persister les artefacts importants entre deux sessions Colab.
-# Sans cette cellule, les fichiers dans /content/ sont perdus à la fin
-# de la session (environnement éphémère).
+# Goal: persist the important artifacts between two Colab sessions.
+# Without this cell, the files in /content/ are lost at the end
+# of the session (ephemeral environment).
 #
-# Fichiers sauvegardés :
-#   asymmirai_weights.pth     → poids du modèle AsymMirai (44 MB)
-#   ensemble_meta_model.pkl   → meta-modèle XGBoost entraîné (si disponible)
+# Files saved:
+#   asymmirai_weights.pth     → AsymMirai model weights (44 MB)
+#   ensemble_meta_model.pkl   → trained XGBoost meta-model (if available)
 #
-# drive.mount() déclenche une authentification OAuth Google dans Colab.
-# shutil.copy() effectue une copie byte-for-byte (pas de modification).
+# drive.mount() triggers a Google OAuth authentication in Colab.
+# shutil.copy() performs a byte-for-byte copy (no modification).
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Sauvegarde des fichiers importants sur Google Drive
+# Saving the important files to Google Drive
 from google.colab import drive
 drive.mount('/content/drive')
 
 import shutil, os
 
-# Crée un dossier dédié sur Drive
+# Creates a dedicated folder on Drive
 save_dir = '/content/drive/MyDrive/AsymMirai_Projet'
 os.makedirs(save_dir, exist_ok=True)
 
-# Sauvegarde les poids
+# Saves the weights
 shutil.copy('/content/snapshots/asymmirai_weights.pth',
             f'{save_dir}/asymmirai_weights.pth')
 
-# Sauvegarde le meta-modèle XGBoost si il existe
+# Saves the XGBoost meta-model if it exists
 if os.path.exists('/content/ensemble_meta_model.pkl'):
     shutil.copy('/content/ensemble_meta_model.pkl',
                 f'{save_dir}/ensemble_meta_model.pkl')
 
-print('Sauvegarde terminee dans :', save_dir)
+print('Saved in :', save_dir)
 
 # %% [markdown] cellule 20
 # 

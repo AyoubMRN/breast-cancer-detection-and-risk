@@ -1,4 +1,4 @@
-# Script conversion of the cells of: modele détection 1.ipynb (Drive, POC/DEEP LEARNING/DÉTECTION/Détection 1)
+# Script conversion of the cells of the Colab notebook modele détection 1.ipynb
 # Outputs and images removed.
 
 # %% [markdown] cellule 1

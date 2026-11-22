@@ -6,7 +6,7 @@ This repository contains the application code (`app.py`, `frontend/`, `Mirai/`) 
 
 ## Sources
 
-1. The "Work split" section of the team report "SeinTinelle: Project report". It states that it was drawn up from the weekly progress reports and the contributions to the GitHub repository and the website. It is a statement by the team.
+1. The "Work split" section of the team report "SeinTinelle: Project report". It was drawn up from the weekly progress reports and the contributions to the GitHub repository and the website.
 2. The "Team" section of the team README (names and programs).
 
 The roles below follow these two sources.

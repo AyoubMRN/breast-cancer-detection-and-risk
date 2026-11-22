@@ -1,11 +1,11 @@
-# Script conversion of the cells of: Projet_AI_E3E.ipynb (personal Drive)
+# Script conversion of the cells of the Colab notebook Projet_AI_E3E.ipynb
 # Outputs and images removed.
 
 # %% cellule 1
 # --- PART 1: CNN MODEL (MAMMOGRAPHY IMAGES) ---
 
 # %% cellule 2
-# Install the new library seen in your screenshot
+# Install the required library
 !pip install kagglehub
 
 import cv2
@@ -291,7 +291,7 @@ modele_clinique.fit(X_train_scaled, y_train_tab)
 print("✅ Training finished!")
 
 # --- EXAMEN FINAL ---
-# predict_proba() is THE most important function for you:
+# predict_proba() is THE most important function here:
 # It does not just say "Sick" or "Healthy", it outputs a percentage (e.g. 85% risk)!
 probabilites_clinique = modele_clinique.predict_proba(X_test_scaled)[:, 1]
 predictions_brutes = modele_clinique.predict(X_test_scaled)
@@ -301,7 +301,7 @@ auc_clinique = roc_auc_score(y_test_tab, probabilites_clinique)
 
 print(f"\n🏆 TABULAR MODEL RESULTS:")
 print(f"➡️ Overall accuracy: {precision * 100:.2f}%")
-print(f"➡️ AUC score (to send to Maxime!): {auc_clinique:.4f}")
+print(f"➡️ AUC score: {auc_clinique:.4f}")
 
 # %% cellule 15
 import joblib

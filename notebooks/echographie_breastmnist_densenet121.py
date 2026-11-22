@@ -1,4 +1,4 @@
-# Script conversion of the cells of: best_breast_cancer_echographie.ipynb (Drive, folder DETECTION / Code finale, owner Rayan Oulboub)
+# Script conversion of the cells of the Colab notebook best_breast_cancer_echographie.ipynb
 # Outputs and images removed.
 
 # %% [markdown] cellule 1

@@ -1,11 +1,11 @@
-# Conversion en script des cellules de : Projet_AI_E3E.ipynb (Drive personnel)
-# Sorties et images retirées.
+# Script conversion of the cells of: Projet_AI_E3E.ipynb (personal Drive)
+# Outputs and images removed.
 
 # %% cellule 1
-# --- PARTIE 1 : MODÈLE CNN (IMAGES MAMOGRAPHIQUE) ---
+# --- PART 1: CNN MODEL (MAMMOGRAPHY IMAGES) ---
 
 # %% cellule 2
-# On installe la nouvelle bibliothèque vue sur ta capture d'écran
+# Install the new library seen in your screenshot
 !pip install kagglehub
 
 import cv2
@@ -17,21 +17,21 @@ import matplotlib.image as mpimg
 import cv2
 import numpy as np
 
-# Télechargement de la BDD : CBIS-DDSM: Breast Cancer Image Dataset
+# Downloading the database: CBIS-DDSM: Breast Cancer Image Dataset
 path = kagglehub.dataset_download("awsaf49/cbis-ddsm-breast-cancer-image-dataset")
 
 # %% cellule 3
 import pandas as pd
 import os
 
-# On cible le fichier CSV d'entraînement pour les masses tumorales
+# Target the training CSV file for tumor masses
 chemin_csv_masses = os.path.join(path, "csv", "mass_case_description_train_set.csv")
 
-# On demande à Pandas de lire ce fichier
+# Ask Pandas to read this file
 df_diagnostic = pd.read_csv(chemin_csv_masses)
 
-print("Voici à quoi ressemble le vrai fichier médical :")
-# On affiche les 5 premières lignes du tableau
+print("Here is what the real medical file looks like:")
+# Display the first 5 rows of the table
 display(df_diagnostic.head())
 
 # %% cellule 4
@@ -39,54 +39,54 @@ import os
 import glob
 import pandas as pd
 
-#On liste TOUTES les images jpg du disque
+#List ALL the jpg images on the disk
 toutes_les_images = glob.glob(os.path.join(path, "**", "*.jpg"), recursive=True)
 
-#On crée un dictionnaire : { 'LONG_NUMERO_UID' : 'CHEMIN_DE_L_IMAGE' }
+#Create a dictionary: { 'LONG_UID_NUMBER' : 'IMAGE_PATH' }
 dict_images_disque = {}
 for img in toutes_les_images:
-    # L'UID, c'est le nom du dossier juste avant l'image
+    # The UID is the name of the folder just before the image
     uid = os.path.basename(os.path.dirname(img))
     dict_images_disque[uid] = img
 
-#La fonction Brute Force
+#The brute-force function
 def match_infaillible(csv_path):
-    csv_path = str(csv_path) # On s'assure que c'est du texte
-    # Pour chaque UID existant sur notre disque dur...
+    csv_path = str(csv_path) # Make sure it is text
+    # For each UID existing on our hard drive...
     for uid, chemin_img in dict_images_disque.items():
-        # ... on regarde s'il est caché à l'intérieur du texte du CSV
+        # ... check whether it is hidden inside the CSV text
         if uid in csv_path:
             return chemin_img
-    return None # Si on ne trouve rien
+    return None # If nothing is found
 
-#On applique à notre tableau
+#Apply it to our table
 df_final = df_diagnostic.copy()
 df_final['vrai_chemin'] = df_final['image file path'].apply(match_infaillible)
 
-#On crée les labels (0 = Bénin, 1 = Malin)
+#Create the labels (0 = Benign, 1 = Malignant)
 df_final['label'] = df_final['pathology'].map({
     'BENIGN': 0,
     'BENIGN_WITHOUT_CALLBACK': 0,
     'MALIGNANT': 1
 })
 
-#On supprime les échecs
+#Remove the failures
 df_final = df_final.dropna(subset=['vrai_chemin', 'label'])
 
-print(f"\n {len(df_final)} images liées avec succès à leur diagnostic.")
+print(f"\n {len(df_final)} images successfully linked to their diagnosis.")
 display(df_final[['pathology', 'label', 'vrai_chemin']].head())
 
 # %% cellule 5
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-print("⏳ Préparation des générateurs définitifs...")
+print("⏳ Preparing the final generators...")
 
-# TensorFlow préfère que les étiquettes 0 et 1 soient du texte pour cette fonction
+# TensorFlow prefers the 0 and 1 labels to be text for this function
 df_final['label'] = df_final['label'].astype(str)
 
-# On coupe le tableau en deux (80% Train, 20% Validation/Test)
-# "stratify" garantit qu'il y a le même pourcentage de cancers dans l'entraînement et dans le test
+# Split the table in two (80% Train, 20% Validation/Test)
+# "stratify" guarantees the same percentage of cancers in training and in test
 train_df, val_df = train_test_split(
     df_final,
     test_size=0.2,
@@ -94,23 +94,23 @@ train_df, val_df = train_test_split(
     stratify=df_final['label']
 )
 
-# On crée l'outil qui va redimensionner et normaliser les images à la volée (pixels / 255)
+# Create the tool that resizes and normalizes the images on the fly (pixels / 255)
 generateur = ImageDataGenerator(rescale=1./255.)
 
-# Le générateur d'entraînement
-print("\n Générateur d'entraînement (Train) :")
+# The training generator
+print("\n Training generator (Train):")
 train_gen = generateur.flow_from_dataframe(
     dataframe=train_df,
-    x_col="vrai_chemin",    # La colonne avec les adresses des images
-    y_col="label",          # La colonne avec le diagnostic (0 ou 1)
-    target_size=(224, 224), # La taille pour l'IA
-    color_mode="grayscale", # On force le noir et blanc
-    class_mode="binary",    # Car on a seulement 2 choix (Bénin/Malin)
-    batch_size=32           # On donne les images par paquets de 32
+    x_col="vrai_chemin",    # The column with the image paths
+    y_col="label",          # The column with the diagnosis (0 or 1)
+    target_size=(224, 224), # The size for the AI
+    color_mode="grayscale", # Force black and white
+    class_mode="binary",    # Because there are only 2 choices (Benign/Malignant)
+    batch_size=32           # Feed the images in batches of 32
 )
 
-# Le générateur de test
-print("\n Générateur de validation (Test) :")
+# The test generator
+print("\n Validation generator (Test):")
 val_gen = generateur.flow_from_dataframe(
     dataframe=val_df,
     x_col="vrai_chemin",
@@ -125,16 +125,16 @@ val_gen = generateur.flow_from_dataframe(
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 
-print(" Construction de l'architecture du réseau de neurones...")
+print(" Building the neural network architecture...")
 
-# On crée un modèle "Séquentiel" (une pile de couches, de haut en bas)
+# Create a "Sequential" model (a stack of layers, from top to bottom)
 modele = Sequential([
-    # --- BLOC 1 : Les yeux de base ---
-    # 32 filtres de 3x3 pixels. On précise la taille de l'image d'entrée (224x224 en noir et blanc "1")
+    # --- BLOCK 1: The basic eyes ---
+    # 32 filters of 3x3 pixels. Specify the input image size (224x224 in black and white "1")
     Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 1)),
     MaxPooling2D(2, 2),
 
-    # --- BLOC 2 : L'analyse des textures ---
+    # --- BLOCK 2: Texture analysis ---
     # 64 filtres, l'IA devient plus experte
     Conv2D(64, (3, 3), activation='relu'),
     MaxPooling2D(2, 2),
@@ -143,30 +143,30 @@ modele = Sequential([
     Conv2D(128, (3, 3), activation='relu'),
     MaxPooling2D(2, 2),
 
-    # --- BLOC DE DÉCISION ---
-    # On aplatit la carte 2D des résultats en une simple liste 1D
+    # --- DECISION BLOCK ---
+    # Flatten the 2D map of results into a simple 1D list
     Flatten(),
 
-    # Un "gros" cerveau de 128 neurones pour réfléchir aux indices trouvés
+    # A "big" brain of 128 neurons to reason about the clues found
     Dense(128, activation='relu'),
 
-    # Le "Dropout" est une astuce vitale : on désactive 50% des neurones au hasard à chaque tour.
-    # Ça force l'IA à réfléchir globalement et l'empêche d'apprendre les images par cœur !
+    # "Dropout" is a vital trick: 50% of the neurons are randomly turned off at each step.
+    # It forces the AI to reason globally and prevents it from memorizing the images!
     Dropout(0.5),
 
-    # LA SORTIE : 1 seul neurone.
-    # 'sigmoid' le force à donner un résultat entre 0 (Bénin) et 1 (Malin).
+    # THE OUTPUT: a single neuron.
+    # 'sigmoid' forces it to output a value between 0 (Benign) and 1 (Malignant).
     Dense(1, activation='sigmoid')
 ])
 
-# On affiche le résumé de la construction
-print("\n📋 Résumé du modèle :")
+# Display the build summary
+print("\n📋 Model summary:")
 modele.summary()
 
 # %% cellule 7
 
 import tensorflow as tf
-# On configure le cerveau avant l'entraînement
+# Configure the brain before training
 modele.compile(
     optimizer='adam',
     loss='binary_crossentropy',
@@ -175,7 +175,7 @@ modele.compile(
 
 
 # On lance l'apprentissage
-# 'epochs=10' signifie que l'IA va revoir l'intégralité des 1054 images 10 fois de suite.
+# 'epochs=10' means the AI will go through all 1054 images 10 times in a row.
 historique = modele.fit(
     train_gen,
     validation_data=val_gen,
@@ -186,29 +186,29 @@ historique = modele.fit(
 import numpy as np
 from tensorflow.keras.preprocessing import image
 
-#On récupère une image au hasard dans le dossier de test (val_df)
-# On prend la première ligne pour l'exemple
+#Pick a random image from the test set (val_df)
+# Take the first row as an example
 test_image_path = val_df['vrai_chemin'].iloc[0]
 vrai_diagnostic = val_df['pathology'].iloc[0]
 
-#On prépare l'image pour l'IA (exactement comme pour l'entraînement)
+#Prepare the image for the AI (exactly as for training)
 img_test = image.load_img(test_image_path, target_size=(224, 224), color_mode="grayscale")
 img_array = image.img_to_array(img_test)
-img_array = img_array / 255.0  # Normalisation (0 à 1)
-img_array = np.expand_dims(img_array, axis=0)  # On ajoute une dimension pour dire "c'est un paquet de 1 image"
+img_array = img_array / 255.0  # Normalization (0 to 1)
+img_array = np.expand_dims(img_array, axis=0)  # Add a dimension to say "this is a batch of 1 image"
 
-# L'IA donne sa prédiction
+# The AI gives its prediction
 prediction = modele.predict(img_array)
 
-# On affiche le résultat
+# Display the result
 score = prediction[0][0]
-verdict = "MALIN (CANCER)" if score > 0.5 else "BÉNIN"
+verdict = "MALIGNANT (CANCER)" if score > 0.5 else "BENIGN"
 
-print(f"\n--- TEST DE L'IA ---")
-print(f"Vrai diagnostic (Médecin) : {vrai_diagnostic}")
-print(f"Prédiction de l'IA : {verdict} (Confiance : {score*100:.2f}%)")
+print(f"\n--- AI TEST ---")
+print(f"True diagnosis (Doctor): {vrai_diagnostic}")
+print(f"AI prediction: {verdict} (Confidence: {score*100:.2f}%)")
 
-# Affichage de l'image pour vérifier
+# Display the image to check
 import matplotlib.pyplot as plt
 plt.imshow(img_test, cmap='gray')
 plt.title(f"Verdict IA: {verdict}")
@@ -219,7 +219,7 @@ plt.show()
 modele.save('cnn_cbis_ddsm_ayoub.keras')
 
 # %% cellule 10
-# --- PARTIE 2 : MODÈLE TABULAIRE (DONNÉES CLINIQUES) ---
+# --- PART 2: TABULAR MODEL (CLINICAL DATA) ---
 
 # %% cellule 11
 !pip install -q kagglehub
@@ -227,91 +227,91 @@ import kagglehub
 import pandas as pd
 import os
 
-print("⏳ Téléchargement de la base de données Wisconsin...")
+print("⏳ Downloading the Wisconsin database...")
 
-# On télécharge le dossier contenant le CSV
+# Download the folder containing the CSV
 dossier_tabulaire = kagglehub.dataset_download("uciml/breast-cancer-wisconsin-data")
 chemin_csv_wisconsin = os.path.join(dossier_tabulaire, "data.csv")
 
-# On lit le tableau avec Pandas
+# Read the table with Pandas
 df_clinique = pd.read_csv(chemin_csv_wisconsin)
 
-print("✅ Données chargées avec succès !")
+print("✅ Data loaded successfully!")
 display(df_clinique.head())
 
 # %% cellule 12
-print("🧹 Nettoyage des données...")
+print("🧹 Cleaning the data...")
 
-# 1. On supprime la colonne 'id' et une colonne vide qui traîne souvent sur Kaggle ('Unnamed: 32')
+# 1. Drop the 'id' column and an empty column often found on Kaggle ('Unnamed: 32')
 if 'id' in df_clinique.columns:
     df_clinique = df_clinique.drop('id', axis=1)
 if 'Unnamed: 32' in df_clinique.columns:
     df_clinique = df_clinique.drop('Unnamed: 32', axis=1)
 
-# 2. On transforme le texte en chiffres pour l'algorithme
+# 2. Convert the text to numbers for the algorithm
 # M = Malin (Cancer) -> 1
-# B = Bénin (Sain) -> 0
+# B = Benign (Healthy) -> 0
 df_clinique['diagnosis'] = df_clinique['diagnosis'].map({'M': 1, 'B': 0})
 
-print("📊 Répartition des patientes dans le tableau :")
+print("📊 Distribution of the patients in the table:")
 print(df_clinique['diagnosis'].value_counts())
-print("(0 = Bénin, 1 = Malin)")
+print("(0 = Benign, 1 = Malignant)")
 
 # %% cellule 13
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-# On sépare la "Cible" (le diagnostic) du reste des données (les mesures)
+# Separate the "Target" (the diagnosis) from the rest of the data (the measurements)
 y_tabulaire = df_clinique['diagnosis']
 X_tabulaire = df_clinique.drop('diagnosis', axis=1)
 
-# On sépare en 80% Apprentissage et 20% Examen final
+# Split into 80% Training and 20% Final exam
 X_train_tab, X_test_tab, y_train_tab, y_test_tab = train_test_split(
     X_tabulaire, y_tabulaire, test_size=0.2, random_state=42, stratify=y_tabulaire
 )
 
-# ⚠️ ÉTAPE CRUCIALE : La normalisation des données chiffrées
+# ⚠️ CRUCIAL STEP: Normalization of the numerical data
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train_tab)
 X_test_scaled = scaler.transform(X_test_tab)
 
-print(f"👉 Entraînement : {X_train_tab.shape[0]} patientes")
+print(f"👉 Training: {X_train_tab.shape[0]} patients")
 print(f"👉 Test : {X_test_tab.shape[0]} patientes")
 
 # %% cellule 14
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, roc_auc_score
 
-print("🧠 Entraînement du modèle Machine Learning (Random Forest)...")
+print("🧠 Training the Machine Learning model (Random Forest)...")
 
-# Création du modèle avec 100 "arbres de décision"
+# Create the model with 100 "decision trees"
 modele_clinique = RandomForestClassifier(n_estimators=100, random_state=42)
 modele_clinique.fit(X_train_scaled, y_train_tab)
 
-print("✅ Entraînement terminé !")
+print("✅ Training finished!")
 
 # --- EXAMEN FINAL ---
-# predict_proba() est LA fonction la plus importante pour vous :
-# Elle ne dit pas juste "Malade" ou "Sain", elle sort un pourcentage (ex: 85% de risque) !
+# predict_proba() is THE most important function for you:
+# It does not just say "Sick" or "Healthy", it outputs a percentage (e.g. 85% risk)!
 probabilites_clinique = modele_clinique.predict_proba(X_test_scaled)[:, 1]
 predictions_brutes = modele_clinique.predict(X_test_scaled)
 
 precision = accuracy_score(y_test_tab, predictions_brutes)
 auc_clinique = roc_auc_score(y_test_tab, probabilites_clinique)
 
-print(f"\n🏆 RÉSULTATS DU MODÈLE TABULAIRE :")
-print(f"➡️ Précision Globale (Accuracy) : {precision * 100:.2f}%")
-print(f"➡️ Score AUC (À envoyer à Maxime !) : {auc_clinique:.4f}")
+print(f"\n🏆 TABULAR MODEL RESULTS:")
+print(f"➡️ Overall accuracy: {precision * 100:.2f}%")
+print(f"➡️ AUC score (to send to Maxime!): {auc_clinique:.4f}")
 
 # %% cellule 15
 import joblib
 
-# On sauvegarde DEUX choses (le modèle ET l'outil de mise à l'échelle)
+# Save TWO things (the model AND the scaling tool)
 joblib.dump(modele_clinique, 'modele_tabulaire_wisconsin.pkl')
 joblib.dump(scaler, 'scaler_wisconsin.pkl')
 
-print("💾 Modèle Tabulaire et Scaler sauvegardés avec succès !")
-print("Tous les ingrédients pour la Fusion Multimodale sont prêts.")
+print("💾 Tabular model and scaler saved successfully!")
+print("All the ingredients for the Multimodal Fusion are ready.")
 
 # %% cellule 16
 
@@ -319,37 +319,37 @@ print("Tous les ingrédients pour la Fusion Multimodale sont prêts.")
 # %% cellule 17
 import numpy as np
 
-print("🔬 Récupération d'un dossier patiente au hasard...")
+print("🔬 Retrieving a random patient record...")
 
-# 1. On prend le dossier clinique de la toute première patiente de notre lot de test
+# 1. Take the clinical record of the very first patient in our test batch
 patiente_test = X_test_tab.iloc[[0]]
-vrai_diagnostic = y_test_tab.iloc[0] # Ce que le médecin avait vraiment conclu
+vrai_diagnostic = y_test_tab.iloc[0] # What the doctor actually concluded
 
-# 2. ⚠️ L'ÉTAPE PIÈGE : La mise à l'échelle
-# On doit utiliser l'outil 'scaler' pour que l'IA comprenne les chiffres
+# 2. ⚠️ THE TRAP STEP: Scaling
+# The 'scaler' tool must be used so the AI understands the numbers
 patiente_scaled = scaler.transform(patiente_test)
 
-# 3. L'IA analyse le dossier et donne son pourcentage
-# predict_proba renvoie deux chiffres : [Proba_Bénin, Proba_Malin]
+# 3. The AI analyzes the record and gives its percentage
+# predict_proba returns two numbers: [Proba_Benign, Proba_Malignant]
 probabilites = modele_clinique.predict_proba(patiente_scaled)
 risque_malignite = probabilites[0][1] * 100
 
 print("\n" + "="*40)
-print("🩺 RÉSULTAT DE LA CONSULTATION IA")
+print("🩺 AI CONSULTATION RESULT")
 print("="*40)
 
-# On affiche la vérité
+# Display the ground truth
 if vrai_diagnostic == 1:
-    print("Vrai diagnostic (Médecin) : MALIN (Cancer) ⚠️")
+    print("True diagnosis (Doctor): MALIGNANT (Cancer) ⚠️")
 else:
-    print("Vrai diagnostic (Médecin) : BÉNIN (Sain) ✅")
+    print("True diagnosis (Doctor): BENIGN (Healthy) ✅")
 
 print("-" * 40)
 
-# On affiche la prédiction de l'IA
-print(f"L'IA estime le risque de cancer à : {risque_malignite:.1f}%")
+# Display the AI prediction
+print(f"The AI estimates the cancer risk at: {risque_malignite:.1f}%")
 
 if risque_malignite > 50:
-    print("Verdict de l'IA : Le modèle classe cette tumeur comme MALIGNE.")
+    print("AI verdict: the model classifies this tumor as MALIGNANT.")
 else:
-    print("Verdict de l'IA : Le modèle classe cette tumeur comme BÉNIGNE.")
+    print("AI verdict: the model classifies this tumor as BENIGN.")

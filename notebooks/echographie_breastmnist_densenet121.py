@@ -1,37 +1,37 @@
-# Conversion en script des cellules de : best_breast_cancer_echographie.ipynb (Drive, dossier DETECTION / Code finale, propriétaire Rayan Oulboub)
-# Sorties et images retirées.
+# Script conversion of the cells of: best_breast_cancer_echographie.ipynb (Drive, folder DETECTION / Code finale, owner Rayan Oulboub)
+# Outputs and images removed.
 
 # %% [markdown] cellule 1
-# # Detection du Cancer du Sein - Mammographie
+# # Breast Cancer Detection - Mammography
 # ### Dataset : BreastMNIST (MedMNIST v2)
 # ### Architecture : DenseNet-121 (Transfer Learning) + Augmentation offline + Focal Loss + TTA
-# ### Interface : Upload d'image -> Prediction Benin / Malin
+# ### Interface: image upload -> Benign / Malignant prediction
 # 
 # ---
 # 
-# **Structure du projet :**
+# **Project structure:**
 # - Step 0 - Installations & Imports
-# - Step 1 - Chargement du dataset BreastMNIST
+# - Step 1 - Loading the BreastMNIST dataset
 # - Step 2 - Exploration & Visualisation (EDA)
 # - Step 3 - Augmentation offline & Generateurs
 # - Step 4 - Architecture DenseNet-121 (Transfer Learning)
 # - Step 5 - Entrainement Phase 1 (warm-up) + Phase 2 (fine-tuning)
 # - Step 6 - Evaluation complete (Accuracy, AUC, F1, Matrice de confusion)
 # - Step 7 - Grad-CAM (explainabilite)
-# - Step 8 - Interface Interactive (upload image -> diagnostic)
+# - Step 8 - Interactive interface (image upload -> diagnosis)
 # - Step 9 - Resume final & Sauvegarde
 # 
 # ---
 # 
 # Sources :
 # 
-# [1] MedMNIST v2 — dataset BreastMNIST Yang J. et al. (2023). MedMNIST v2 — A Large-Scale Lightweight Benchmark for 2D and 3D Biomedical Image Classification. Scientific Data. https://doi.org/10.1038/s41597-022-01721-8 GitHub : https://github.com/MedMNIST/MedMNIST
+# [1] MedMNIST v2 — dataset BreastMNIST Yang J. et al. (2023). MedMNIST v2 — A Large-Scale Lightweight Benchmark for 2D and 3D Biomedical Image Classification. Scientific Data. https://doi.org/10.1038/s41597-022-01721-8 GitHub: https://github.com/MedMNIST/MedMNIST
 # 
 # [2] DenseNet-121 (Keras Applications) — Transfer Learning officiel TensorFlow / Keras documentation : https://www.tensorflow.org/tutorials/images/transfer_learning
 # 
-# [3] https://github.com/bundasmanu/skin_mnist : jupyter notebook utilisant DenseNet - Oversampling - Data Augmentation pour la detection du cancer du sein avec 81% d'accuracy
+# [3] https://github.com/bundasmanu/skin_mnist : Jupyter notebook using DenseNet - Oversampling - Data Augmentation for breast cancer detection with 81% accuracy
 # 
-# [4] Focal Loss — implémentation Keras (binary, avec alpha & gamma) https://github.com/umbertogriffo/focal-loss-keras
+# [4] Focal Loss — Keras implementation (binary, with alpha & gamma) https://github.com/umbertogriffo/focal-loss-keras
 
 # %% [markdown] cellule 2
 # ## Step 0 - Installations & Imports
@@ -39,7 +39,7 @@
 # %% cellule 3
 # Step 0 : Installations & Imports
 # ============================================================
-# Installation de medmnist (BreastMNIST) - executer directement sur Colab
+# Installing medmnist (BreastMNIST) - run directly on Colab
 
 !pip install -q medmnist
 
@@ -95,16 +95,16 @@ print('=' * 55)
 
 
 # %% [markdown] cellule 4
-# ## Step 1 - Chargement du Dataset BreastMNIST
+# ## Step 1 - Loading the BreastMNIST Dataset
 
 # %% cellule 5
-# Step 1 : Chargement BreastMNIST
+# Step 1 : Loading BreastMNIST
 # ============================================================
-# BreastMNIST derive du dataset Wisconsin (UCI) - images 28x28 grayscale
-# redimensionnees a 224x224 et converties RGB pour DenseNet-121.
+# BreastMNIST is derived from the Wisconsin dataset (UCI) - 28x28 grayscale images
+# resized to 224x224 and converted to RGB for DenseNet-121.
 # Labels : 0 = Benin, 1 = Malin
 
-print('Telechargement du dataset BreastMNIST...')
+print('Downloading the BreastMNIST dataset...')
 train_dataset = BreastMNIST(split='train', download=True, size=224)
 val_dataset   = BreastMNIST(split='val',   download=True, size=224)
 test_dataset  = BreastMNIST(split='test',  download=True, size=224)
@@ -144,7 +144,7 @@ print(f'Test  - Benin: {(y_test==0).sum()},  Malin: {(y_test==1).sum()}')
 
 # %% cellule 7
 # Step 2 : EDA
-# PETIT CRASH TEST : Teste de différentes visualisation pour voir si l'implementation fonctionne bien
+# QUICK SANITY CHECK: tests several visualizations to see whether the implementation works correctly
 
 COLORS = ['#2980b9', '#c0392b']
 CLASS_NAMES = {0: 'Benin', 1: 'Malin'}
@@ -232,7 +232,7 @@ def normalize_imagenet(img):
     """Normalise uint8 [0,255] vers float32 normalise ImageNet."""
     return (img.astype(np.float32) / 255.0 - MEAN) / STD
 
-print('Augmentation offline de la classe Malin...')
+print('Offline augmentation of the Malignant class...')
 
 aug_gen = ImageDataGenerator(
     horizontal_flip=True, vertical_flip=True,
@@ -306,7 +306,7 @@ print(f'Generateurs crees - Batches train:{len(train_ds)} val:{len(val_ds)} test
 # Focal Loss (alpha=0.75, gamma=2.0) + Label Smoothing (eps=0.05)
 
 def focal_loss(alpha=0.75, gamma=2.0, label_smoothing=0.05):
-    """Focal Loss avec lissage de labels. Penalise les faux negatifs (malins manques)."""
+    """Focal Loss with label smoothing. Penalizes false negatives (missed malignant cases)."""
     def loss_fn(y_true, y_pred):
         y_true_s = y_true * (1 - label_smoothing) + 0.5 * label_smoothing
         y_pred   = tf.clip_by_value(y_pred, 1e-7, 1.0 - 1e-7)
@@ -317,7 +317,7 @@ def focal_loss(alpha=0.75, gamma=2.0, label_smoothing=0.05):
     return loss_fn
 
 def build_densenet_model(freeze_backbone=True):
-    """Construit DenseNet-121 avec tete de classification."""
+    """Build DenseNet-121 with a classification head."""
     backbone = DenseNet121(include_top=False, weights='imagenet',
                            input_shape=(IMG_SIZE, IMG_SIZE, 3))
     backbone.trainable = not freeze_backbone
@@ -363,7 +363,7 @@ model.summary()
 # Step 5 : Entrainement en 2 phases
 # ============================================================
 # Phase 1 (warm-up, max 15 epoques) :
-#   Backbone gele, seule la tete est entrainee. LR = 1e-3
+#   Frozen backbone, only the head is trained. LR = 1e-3
 # Phase 2 (fine-tuning, max 35 epoques) :
 #   100 dernieres couches DenseNet degelees. LR faible = 5e-5.
 
@@ -422,11 +422,11 @@ print('Meilleur modele sauvegarde -> best_model_final.keras')
 # ## Step 6 - Evaluation complete (TTA + Metriques + Courbes)
 
 # %% cellule 15
-# Step 6 : Evaluation complete avec TTA
+# Step 6 : Full evaluation with TTA
 # ============================================================
 # TTA : N_TTA=7 passes (1 originale + 6 augmentees legeres)
-# Les probabilites sont moyennees pour une prediction plus robuste.
-# Seuil de decision optimise sur le F1-score.
+# The probabilities are averaged for a more robust prediction.
+# Decision threshold optimized on the F1-score.
 
 from sklearn.metrics import f1_score as f1_fn
 
@@ -437,7 +437,7 @@ tta_gen = ImageDataGenerator(
 )
 
 def predict_tta(model, X_uint8, n_tta=7, batch_size=32):
-    """N_TTA passes TTA, retourne les probabilites moyennees."""
+    """N_TTA TTA passes, returns the averaged probabilities."""
     all_proba = np.zeros((n_tta, len(X_uint8)), dtype=np.float32)
     for t in range(n_tta):
         if t == 0:
@@ -454,11 +454,11 @@ def predict_tta(model, X_uint8, n_tta=7, batch_size=32):
         all_proba[t] = np.array(preds)
     return all_proba.mean(axis=0)
 
-print(f'Predictions avec TTA (x{N_TTA})...')
+print(f'Predictions with TTA (x{N_TTA})...')
 y_proba_tta = predict_tta(model, X_test_raw, n_tta=N_TTA, batch_size=BATCH_SIZE)
 print('TTA termine')
 
-# Optimisation du seuil
+# Threshold optimization
 best_thresh = 0.735
 print(f'Seuil optimal (max F1) : {best_thresh:.2f}')
 
@@ -472,7 +472,7 @@ rec_test  = recall_score(y_test, y_pred, zero_division=0)
 f1_test   = f1_score(y_test, y_pred, zero_division=0)
 
 print('=' * 60)
-print('         RESULTATS FINAUX - TEST SET (avec TTA)')
+print('         FINAL RESULTS - TEST SET (with TTA)')
 print('=' * 60)
 print(f'  Accuracy     : {acc_test*100:.2f}%')
 print(f'  AUC-ROC      : {auc_test:.4f}')
@@ -518,13 +518,13 @@ plt.tight_layout(); plt.show()
 # ## Step 7 - Grad-CAM (Explainabilite)
 
 # %% cellule 17
-# Step 7 : Grad-CAM - Visualisation des zones d'interet
+# Step 7 : Grad-CAM - Visualization of the regions of interest
 # ============================================================
-# Grad-CAM genere une carte de chaleur sur l'image originale.
+# Grad-CAM generates a heatmap on the original image.
 # Couche cible : conv5_block16_concat (derniere conv DenseNet-121)
 
 def get_gradcam_heatmap(model, img_array, layer_name='conv5_block16_concat'):
-    """Calcule la heatmap Grad-CAM. img_array : (1, 224, 224, 3) normalise."""
+    """Compute the Grad-CAM heatmap. img_array: (1, 224, 224, 3) normalized."""
     grad_model = Model(
         inputs=model.input,
         outputs=[model.get_layer(layer_name).output, model.output]
@@ -541,7 +541,7 @@ def get_gradcam_heatmap(model, img_array, layer_name='conv5_block16_concat'):
     return heatmap.numpy()
 
 def overlay_gradcam(img_uint8, heatmap, alpha=0.4):
-    """Superpose la heatmap Grad-CAM coloree sur l'image originale."""
+    """Overlay the colored Grad-CAM heatmap on the original image."""
     hm_resized = np.array(
         Image.fromarray(np.uint8(255 * heatmap)).resize(
             (img_uint8.shape[1], img_uint8.shape[0]), Image.LANCZOS)
@@ -549,7 +549,7 @@ def overlay_gradcam(img_uint8, heatmap, alpha=0.4):
     hm_color = cm.get_cmap('jet')(hm_resized)[:, :, :3]
     return np.clip((1-alpha) * img_uint8.astype(np.float32)/255.0 + alpha * hm_color, 0, 1)
 
-print('Generation des visualisations Grad-CAM...')
+print('Generating the Grad-CAM visualizations...')
 
 n_ex = 6
 cb = np.where((y_test==0) & (y_pred==0))[0][:3]
@@ -591,7 +591,7 @@ print('Grad-CAM termine')
 # ============================================================
 
 def predict_single_image(img_pil):
-    """Predit la probabilite de malignite avec TTA."""
+    """Predict the probability of malignancy with TTA."""
     img_rgb   = img_pil.convert('RGB').resize((IMG_SIZE, IMG_SIZE), Image.LANCZOS)
     img_uint8 = np.array(img_rgb, dtype=np.uint8)
     img_norm_orig = normalize_imagenet(img_uint8)[np.newaxis].astype(np.float32)
@@ -690,7 +690,7 @@ interface = widgets.VBox([
     output_result
 ])
 
-print('Interface prete - Uploadez une mammographie et cliquez sur Analyser!')
+print('Interface ready - upload a mammogram and click Analyser!')
 display(interface)
 
 
@@ -702,7 +702,7 @@ display(interface)
 # ============================================================
 
 print('=' * 60)
-print('        RESUME FINAL - Detection Cancer du Sein')
+print('        FINAL SUMMARY - Breast Cancer Detection')
 print('=' * 60)
 print(f'  Modele       : DenseNet-121 (Transfer Learning, ImageNet)')
 print(f'  Dataset      : BreastMNIST (MedMNIST v2)')
@@ -719,7 +719,7 @@ print(f'  F1-Score     : {f1_test*100:.2f}%')
 print(f'  Seuil opt.   : {best_thresh:.2f}')
 print('=' * 60)
 
-# Sauvegarde du modele
+# Saving the model
 model.save('breast_cancer_densenet121_final.keras')
 print('Modele sauvegarde -> breast_cancer_densenet121_final.keras')
 
@@ -728,28 +728,28 @@ try:
     files.download('breast_cancer_densenet121_final.keras')
     print('Telechargement lance')
 except Exception:
-    print('Sauvegarde locale (telecharger manuellement si besoin)')
+    print('Local save (download manually if needed)')
 
 print('\n' + '=' * 60)
-print('  Projet terminé')
+print('  Project finished')
 print('=' * 60)
 
 
 # %% [markdown] cellule 22
-# Le code de détection du cancer du sein traite des images de mammographie pour la détection du cancer du sein.
+# The breast cancer detection code processes mammography images for breast cancer detection.
 # 
 # Dataset : BreastMNIST (MedMNIST v2).
 # 
-# Informations : Prise en charges des mammographies pour réalisé un pourcentage de probabilité d’avoir le cancer (classification Malin/Bénin)
+# Information: Takes mammograms as input and produces a probability percentage of having cancer (Malignant/Benign classification)
 # 
 # Redimensionnement : 224*224 pixels
 # 
-# Dataset divisé en 3 parties : train (70%), Validation (15%), test (15%) Algorithmes utilisés : DenseNet-121
+# Dataset split in 3 parts: train (70%), validation (15%), test (15%). Algorithm used: DenseNet-121
 # 
 # Combinaisons de plusieurs techniques : Focal Loss - Label Smoothing - TTA × 7 (Test Time Augmentation) - Oversampling × 3 - Grad-CAM
 # 
-# Quelqu'un a entraîné DenseNet-121 sur ImageNet : 1,2 million de photos (chats, voitures, arbres...). Le réseau a passé des semaines de GPU à apprendre des choses très générales :
+# Someone trained DenseNet-121 on ImageNet: 1.2 million photos (cats, cars, trees...). The network spent weeks of GPU time learning very general things:
 # 
-# Les premières couches détectent des bords et contrastes Les couches du milieu reconnaissent des textures et formes Les dernières couches assemblent ça en concepts complexes
+# The first layers detect edges and contrasts. The middle layers recognize textures and shapes. The last layers assemble them into complex concepts
 # 
-# Je garde les premières couches telles quelles -> Je modifie les 100 dernières couches -> Je remplace la sortie
+# I keep the first layers as they are -> I fine-tune the last 100 layers -> I replace the output

@@ -1,4 +1,4 @@
-# Script conversion of the cells of: detection-rsnav1.ipynb (Drive, owner Ayoub Mernissi)
+# Script conversion of the cells of the Colab notebook detection-rsnav1.ipynb
 # Outputs and images removed.
 
 # %% cellule 1
@@ -69,7 +69,7 @@ print("\n--- 1. CLINICAL MODULE (FORCED 50/50 SAMPLING) ---")
 # 1. Loading
 df_full = pd.read_csv(CHEMIN_CSV)
 
-# FORCE THE BALANCE: 500 sick and 500 healthy (or more if you want, e.g. 1000/1000)
+# FORCE THE BALANCE: 500 sick and 500 healthy
 # This ensures the model sees as many cancers as healthy cases
 n_samples = 500
 
@@ -153,7 +153,7 @@ print("\n--- 3. FUSION PREPARATION (CORRECTED) ---")
 # Use the best models
 modele_clinique_final = modeles_cliniques["Random Forest"]
 
-# 1. TRAIN SET CREATION (this was missing!)
+# 1. TRAIN SET CREATION
 prob_clin_train = modele_clinique_final.predict_proba(X_clin_train)[:, 1]
 prob_img_train = modele_imagerie_best.predict(X_img_train).flatten()
 X_fusion_train = np.column_stack((prob_clin_train, prob_img_train))

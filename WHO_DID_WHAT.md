@@ -1,4 +1,4 @@
-# SeinTinelle: who did what
+# Who did what (SeinTinelle project)
 
 E3 project (ESIEE Paris, 2025-2026): a website to raise awareness about breast cancer, with a detection module (mammography, ultrasound) and a long-term risk prediction module. Team of six students, supervised by Mrs. Imen Kachouri.
 

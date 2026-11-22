@@ -35,7 +35,7 @@ The website itself is in French (the target audience of the project).
 | `detection_rsna_v1.py` | Ayoub Mernissi: RSNA benchmark (clinical data, ResNet50, late fusion) |
 | `cnn_cbis_ddsm_et_random_forest_wisconsin.py` | Ayoub Mernissi: CNN on CBIS-DDSM (run interrupted) and Random Forest on Wisconsin |
 | `echographie_breastmnist_densenet121.py` | Rayan Oulboub's notebook (ultrasound module) |
-| `detection_1.py` | Team notebook (Lilou Parrin's folder): MammoScreen trial |
+| `detection_1.py` | Team notebook (Lilou Parrin): MammoScreen trial |
 
 ## Who did what
 
@@ -48,7 +48,7 @@ The details, with sources, are in [WHO_DID_WHAT.md](WHO_DID_WHAT.md). In short, 
 - **Rayan Oulboub**: project lead; risk model and DenseNet-121 ultrasound with Ayoub, access to the CSAW data.
 - **Antoine Navarro**: deep learning / machine learning state of the art, Kaggle ADMANI notebook, contribution to the website and the first detection model.
 
-The exact share of each member in the ultrasound module is still **TO BE COMPLETED**: the original repository has only a single initial commit, with no per-file attribution.
+The ultrasound module was developed jointly by Rayan Oulboub and Ayoub Mernissi.
 
 ## Running the application locally
 
@@ -65,7 +65,7 @@ Before running `app.py`, the model weights must be placed where the code expects
 
 ## Results and performance
 
-Only figures I could verify at the source are listed here, with their origin. **Notebook**: output saved in the original notebook, read cell by cell. **Original source**: figure read from the publication or the model card, measured by its authors and not by the team. No training or computation was re-run for this repository.
+Only figures that could be checked at their source are listed here, with their origin. **Notebook**: output recorded in the original Colab notebook (outputs are not included in this repository). **Original source**: figure taken from the publication or the model card, measured by its authors and not by the team. Nothing was retrained or recomputed for this repository.
 
 ### Mammography detection (MammoScreen, measured by the model's author)
 
@@ -105,7 +105,7 @@ Our extension (fusion with age, BMI, family history and BI-RADS density) has no 
 
 ### RSNA benchmark (notebook `detection_rsna_v1.py`)
 
-Source: notebook outputs. Rows 2 to 5 use a balanced set of 1,000 patients (500 cancer, 500 healthy), 80 / 20 split: 200 test patients.
+Source: outputs of the original notebook. Rows 2 to 5 use a balanced set of 1,000 patients (500 cancer, 500 healthy), 80 / 20 split: 200 test patients.
 
 | Model | AUC | Cell |
 |---|---|---|
@@ -121,13 +121,9 @@ The imaging models tested here are at or below 0.5: they show no usable signal u
 
 Random Forest (100 trees) on 569 samples (357 benign, 212 malignant), 80 / 20 split (455 / 114): accuracy 97.37%, AUC 0.9929 (cell 14). This dataset contains cell measurements, not images: it says nothing about performance on mammograms. The CNN on CBIS-DDSM in the same notebook was interrupted and produced no metrics.
 
-### Differences with the project report
-
-The report claims 92% precision for ultrasound: no notebook output confirms it, so it is not used here. It gives a threshold of 0.699 while the code uses 0.735, a 1-year AsymMirai AUC of 0.69 in one section (the publication gives 0.79), and fusion weights of 0.70 / 0.30 while the code uses 0.50 / 0.50.
-
 ## Provenance and licenses
 
-- Application code: collective work of the SeinTinelle team. This repository has a fresh history: per-file attribution is not recorded in it, the split is in `WHO_DID_WHAT.md`.
+- Application code: collective work of the SeinTinelle team. Contributions of each member are detailed in `WHO_DID_WHAT.md`.
 - AsymMirai: Donnelly, Moffett, Barnett, Trivedi, Schwartz, Lo, Rudin, Radiology 2024; code under the MIT license (see `Mirai/LICENSE`). Original Mirai: Yala et al. (2021).
 - MammoScreen: third-party model called via Hugging Face, Apache-2.0 license according to its model card. mammo-crop: third-party model by the same author, Apache-2.0 license according to its model card (the card does not state the license of the RSNA training data).
 - BreastMNIST: Yang et al. (2023), MedMNIST v2. The MedMNIST README states the code is under Apache-2.0 and the datasets under CC BY 4.0 (except DermaMNIST); it also asks to cite the papers of the source datasets.
@@ -135,13 +131,13 @@ The report claims 92% precision for ultrasound: no notebook output confirms it, 
 
 ## Model weights
 
-These files are deliberately not in the repository. What I could verify on the official pages:
+These files are deliberately not in the repository. Status according to the official pages:
 
 | File expected by the code | Status | Why it is not included |
 |---|---|---|
-| `Mirai/snapshots/mgh_mammo_MIRAI_Base_May20_2019.p` (Mirai, 50 MB) | Conflicting rights | The `yala/Mirai` README says the trained model and the code are under the MIT license and points to a Docker image to get the weights. The team's report states on the contrary that these weights cannot be redistributed without an institutional agreement. When in doubt, I do not redistribute them: download them from the source. |
+| `Mirai/snapshots/mgh_mammo_MIRAI_Base_May20_2019.p` (Mirai, 50 MB) | Conflicting rights | The `yala/Mirai` README says the trained model and the code are under the MIT license and points to a Docker image to get the weights. The team could not confirm that the weights themselves may be redistributed, so they are not included: download them from the source. |
 | `Mirai/snapshots/trained_asymmirai.pt` (AsymMirai, 45 MB) | License not specified | The `jdonnelly36/AsymMirai` repository does not contain this file: its README points to a download link and only says the model is "open to access and use" with credit to the group. No license is given for the weights, and nothing is said about the effect of the EMBED dataset access conditions. |
-| `breast_cancer_densenet121_final.keras` (ultrasound, 53 MB) | Team work | Model trained by the team on BreastMNIST. No license set, and the file is the work of several people: I do not publish it without their agreement. |
+| `breast_cancer_densenet121_final.keras` (ultrasound, 53 MB) | Team work | Model trained by the team on BreastMNIST. No license has been set, and the file is the joint work of several members, so it is not published. |
 
 The MammoScreen and mammo-crop weights are downloaded automatically from Hugging Face at startup (`snapshot_download` in `app.py`).
 

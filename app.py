@@ -89,7 +89,7 @@ def load_models():
         from huggingface_hub import snapshot_download
         from safetensors.torch import load_file
 
-        print("⏳ Chargement de mammo-crop …")
+        print("⏳ Loading mammo-crop …")
         crop_dir = snapshot_download("ianpan/mammo-crop")
         crop_pkg = load_module_from_dir(crop_dir, "mammo_crop")
         MammoCropModel  = crop_pkg.modeling.MammoCropModel
@@ -101,7 +101,7 @@ def load_models():
         crop_model.eval()
         print("✅ mammo-crop loaded.")
 
-        print("⏳ Chargement de mammoscreen (~244 MB, patience) …")
+        print("⏳ Loading mammoscreen (~244 MB, please wait) …")
         screen_dir = snapshot_download("ianpan/mammoscreen")
         screen_pkg = load_module_from_dir(screen_dir, "mammo_screen")
 
@@ -154,9 +154,9 @@ def load_asym_model():
         import torch
 
         weights_path = os.path.join(MIRAI_DIR, "snapshots", "trained_asymmirai.pt")
-        print(f"⏳ Chargement d'AsymMirai depuis {weights_path} …")
+        print(f"⏳ Loading AsymMirai from {weights_path} …")
         if not os.path.exists(weights_path):
-            print(f"❌ Fichier introuvable : {weights_path}")
+            print(f"❌ File not found: {weights_path}")
             asym_model_ok = False
             return
         asym_model = torch.load(weights_path, map_location="cpu", weights_only=False)
@@ -164,7 +164,7 @@ def load_asym_model():
         asym_model_ok = True
         print("✅ AsymMirai model loaded.")
     except Exception as e:
-        print(f"⚠️  Erreur chargement AsymMirai : {e}")
+        print(f"⚠️  Error loading AsymMirai : {e}")
         traceback.print_exc()
         asym_model_ok = False
 
@@ -534,7 +534,7 @@ def detect():
     except Exception as e:
         tb = traceback.format_exc()
         print("=" * 60)
-        print("ERREUR PIPELINE :")
+        print("PIPELINE ERROR:")
         print(tb)
         print("=" * 60)
         return jsonify({"error": f"{str(e)}\n\n{tb}"}), 500

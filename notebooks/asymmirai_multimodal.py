@@ -1,4 +1,4 @@
-# Script conversion of the cells of: MIRAI_multimodal_FINAL_commented.ipynb (personal Drive)
+# Script conversion of the cells of the Colab notebook MIRAI_multimodal_FINAL_commented.ipynb
 # Outputs and images removed.
 
 # %% [markdown] cellule 1
@@ -140,15 +140,15 @@ from get_asymmetries import get_asymmetries
 # model.eval() disables Dropout/BatchNorm for inference (not training).
 def load_asymmirai(weights_path: str = '/content/snapshots/asymmirai_weights.pth'):
     """
-    Charge le modèle AsymMirai depuis les poids pré-entraînés.
+    Load the AsymMirai model from the pre-trained weights.
 
-    Paramètres
+    Parameters
     ----------
-    weights_path : chemin vers le fichier .pth des poids
+    weights_path : path to the .pth weights file
 
-    Retourne
+    Returns
     --------
-    torch.nn.Module en mode eval, ou None en cas d'erreur
+    torch.nn.Module in eval mode, or None on error
     """
     print(f'⏳ Loading the weights from : {weights_path}')
     if not os.path.exists(weights_path):
@@ -242,9 +242,9 @@ def preprocess_rsna(img, flip=False):
 # The coordinates of the maximum (row, col) are used to locate the asymmetry.
 def extract_heatmap_score(heatmap_tensor):
     """
-    Score d'asymétrie depuis la heatmap 8x8.
-    On utilise l'écart-type et le max BRUT (avant normalisation)
-    pour garder une vraie variance entre patientes.
+    Asymmetry score from the 8x8 heatmap.
+    We use the standard deviation and the RAW max (before normalization)
+    to keep a real variance between patients.
     """
     h = heatmap_tensor.cpu().numpy().squeeze().astype(np.float32)
 
@@ -880,14 +880,14 @@ interface.launch(debug=True, share=True)
 def generate_synthetic_cohort(output_dir: str = '/content/cohort',
                                n_patients: int = 20, seed: int = 42):
     """
-    Génère une cohorte synthétique pour valider le pipeline.
-    Crée des images grises aléatoires (256×256) + un CSV clinique réaliste.
+    Generate a synthetic cohort to validate the pipeline.
+    Creates random gray images (256×256) + a realistic clinical CSV.
 
-    Paramètres
+    Parameters
     ----------
-    output_dir : chemin de sortie de la cohorte
-    n_patients : nombre de patientes à générer
-    seed       : graine pour la reproductibilité
+    output_dir : output path of the cohort
+    n_patients : number of patients to generate
+    seed       : seed for reproducibility
     """
     random.seed(seed)
     np.random.seed(seed)
@@ -942,22 +942,22 @@ def run_cohort_batch(cohort_dir:       str,
                      output_dir:       str  = '/content/cohort_results',
                      max_patients:     int  = None) -> pd.DataFrame:
     """
-    Pipeline de prédiction par cohorte complète.
-    Parcourt toutes les patientes du dossier et génère les prédictions en batch.
+    Full cohort prediction pipeline.
+    Walks through all the patients of the folder and generates the predictions in batch.
 
-    Paramètres
+    Parameters
     ----------
-    cohort_dir    : racine de la cohorte (doit contenir clinical_data.csv + images/)
-    asym_model    : modèle AsymMirai PyTorch chargé en cellule 3
-    ensemble      : instance EnsembleModel initialisée en cellule 4
-    csv_filename  : nom du fichier CSV des métadonnées cliniques
-    images_subdir : sous-dossier contenant les images par patient
-    output_dir    : dossier de sauvegarde des résultats
-    max_patients  : limite du nombre de patients (None = tous)
+    cohort_dir    : root of the cohort (must contain clinical_data.csv + images/)
+    asym_model    : PyTorch AsymMirai model loaded in cell 3
+    ensemble      : EnsembleModel instance initialized in cell 4
+    csv_filename  : name of the clinical metadata CSV file
+    images_subdir : sub-folder containing the images of each patient
+    output_dir    : folder where the results are saved
+    max_patients  : limit on the number of patients (None = all)
 
-    Retourne
+    Returns
     --------
-    pd.DataFrame avec une ligne par patiente et toutes ses prédictions
+    pd.DataFrame with one row per patient and all their predictions
     """
     cohort_path = Path(cohort_dir)
     df_clinical = pd.read_csv(cohort_path / csv_filename)
@@ -1127,13 +1127,13 @@ def compute_cindex(df: pd.DataFrame,
                    time_col:  str = 'time_to_event',
                    event_col: str = 'event_5y') -> dict:
     """
-    Calcule le C-Index de Harrell (Concordance Index).
+    Compute Harrell's C-Index (Concordance Index).
 
-    Interprétation :
-      0.5 = modèle aléatoire | 0.7 = acceptable | 0.8 = bon | >0.85 = excellent
+    Interpretation:
+        0.5 = random model | 0.7 = acceptable | 0.8 = good | >0.85 = excellent
 
-    Note : on passe -score car un score élevé prédit un événement précoce
-    (convention lifelines : score élevé = survie longue).
+    Note: -score is passed because a high score predicts an early event
+    (lifelines convention: high score = long survival).
     """
     df_c = df.dropna(subset=[score_col, time_col, event_col]).copy()
     if not LIFELINES_OK or len(df_c) < 5:
@@ -1163,15 +1163,15 @@ def compute_temporal_auc(df: pd.DataFrame,
                           event_col: str  = 'event_5y',
                           horizons:  list = [1, 3, 5]) -> dict:
     """
-    Calcule l'AUC-ROC à chaque horizon temporel.
+    Compute the AUC-ROC at each time horizon.
 
-    Pour l'horizon t :
-      - Cas positif  : event=1 ET time <= t
-      - Cas négatif  : event=0 ET time >= t (censure après t)
-      - Exclu        : censuré avant t (statut inconnu à t)
+    For horizon t:
+        - Positive case : event=1 AND time <= t
+        - Negative case : event=0 AND time >= t (censored after t)
+        - Excluded      : censored before t (unknown status at t)
 
-    Méthode 1 (recommandée) : cumulative_dynamic_AUC de scikit-survival
-    Méthode 2 (fallback)    : classification binaire naïve sklearn
+    Method 1 (recommended): cumulative_dynamic_AUC from scikit-survival
+    Method 2 (fallback)   : naive binary classification with sklearn
     """
     results     = {}
     score_map   = {1: 'score_y1', 3: 'score_y3', 5: 'score_y5'}
@@ -1231,17 +1231,17 @@ def generate_evaluation_report(df_results: pd.DataFrame,
                                  output_dir: str  = '/content/cohort_results',
                                  plot:       bool = True) -> dict:
     """
-    Rapport d'évaluation clinique complet à partir du DataFrame du Bloc 3.
-    Calcule C-Index, AUC temporelle, Brier Score, stats descriptives
-    et génère les graphiques de distribution et courbes ROC.
+    Complete clinical evaluation report from the Block 3 DataFrame.
+    Computes C-Index, time-dependent AUC, Brier Score, descriptive stats
+    and generates the distribution charts and ROC curves.
 
-    Paramètres
+    Parameters
     ----------
-    df_results : DataFrame issu de run_cohort_batch()
-    output_dir : dossier de sauvegarde des graphiques et du rapport JSON
-    plot       : si True, génère et affiche les figures
+    df_results : DataFrame produced by run_cohort_batch()
+    output_dir : folder where the charts and the JSON report are saved
+    plot       : if True, generates and displays the figures
 
-    Retourne : dict synthétique de toutes les métriques
+    Returns: summary dict of all the metrics
     """
     os.makedirs(output_dir, exist_ok=True)
 

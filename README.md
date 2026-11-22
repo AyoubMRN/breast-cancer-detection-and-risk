@@ -1,6 +1,6 @@
-# SeinTinelle: AI-based breast cancer detection and risk prediction
+# Breast Cancer Detection and Risk Prediction (SeinTinelle)
 
-**Web application** built as an E3 group project (ESIEE Paris, 2025-2026) and presented at the Project Day. Team of six students, supervised by Mrs. Imen Kachouri.
+**SeinTinelle** is a web application built as an E3 group project (ESIEE Paris, 2025-2026) and presented at the Project Day. Team of six students, supervised by Mrs. Imen Kachouri.
 
 > **Student prototype, not a medical device.** Nothing here constitutes a diagnosis or a clinical validation.
 >

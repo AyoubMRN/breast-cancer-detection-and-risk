@@ -79,7 +79,7 @@ tf.random.set_seed(SEED)
 os.environ['PYTHONHASHSEED'] = str(SEED)
 
 # Hyperparametres globaux
-IMG_SIZE    = 224   # Taille entree DenseNet-121
+IMG_SIZE    = 224   # DenseNet-121 input size
 BATCH_SIZE  = 32
 EPOCHS_WARM = 15    # Phase 1 : backbone gele
 EPOCHS_FINE = 35    # Phase 2 : fine-tuning

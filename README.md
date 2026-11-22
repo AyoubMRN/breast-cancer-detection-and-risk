@@ -39,7 +39,7 @@ The website itself is in French (the target audience of the project).
 
 ## Who did what
 
-The details, with sources, are in [WHO_DID_WHAT.md](WHO_DID_WHAT.md). In short, according to the project report:
+The details, with sources, are in [WHO_DID_WHAT.md](WHO_DID_WHAT.md). In short, according to the team:
 
 - **Lilou Parrin**: website pages, integration of the three models with Flask, ethics section, poster.
 - **Nathan Gautier**: state of the art on prediction, data access requests, frontend pages, visual redesign.
